@@ -16,7 +16,7 @@ export function requireObjectId(value: string): Types.ObjectId {
 }
 
 // userId MUST come from a verified server session, never from the request body.
-// Authentication and route integration are implemented at the next milestones.
+// Routes and Server Actions obtain that identity from requireVerifiedUser.
 export async function requireHouseholdAccess(userId: string, householdId: string, ownerOnly = false) {
   const user = requireObjectId(userId);
   const household = requireObjectId(householdId);

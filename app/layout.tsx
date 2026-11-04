@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { APP_NAME } from "@/lib/brand";
 
 export const metadata: Metadata = {
-  title: "GroceryList · Tu hogar, en orden",
+  title: `${APP_NAME} · Tu hogar, en orden`,
   description: "Un espacio para organizar los productos de tu hogar y compartir las compras en familia.",
   robots: { index: false, follow: false },
 };

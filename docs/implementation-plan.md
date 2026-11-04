@@ -1,4 +1,4 @@
-# GroceryList implementation plan
+# Lista de Compras implementation plan
 
 ## Review agreement
 
@@ -30,6 +30,10 @@ Review: completed local database startup and development-only verification of is
 
 ## Milestone 3 — Registration and household creation
 
+Status: implemented; the user confirmed actual email delivery and authorized milestone 4. Uses NextAuth credentials/JWT sessions (the same approach as Scorecast), a unique Lista de Compras secret and cookie names, and the user-approved `updates.finalscore.win` sending domain with a dedicated API key. See `docs/accounts.md` for setup and review.
+
+Verification: `npm run check` passes (lint, TypeScript, 46 unit tests, production build). `npm run db:check` passes 18 local integration checks, using only a disposable database and mocked email delivery. Browser review covered the mobile registration and desktop sign-in layouts, unauthenticated household redirect, and malformed verification links. A full browser account flow with real email and phone review remains for the user after Resend configuration. NextAuth 4.24.15 avoids the audit findings in the older Scorecast patch; the audit still reports 30 findings in the existing dependency tree (including Next.js). Resolve those before public deployment; no broad dependency upgrade was included in this milestone.
+
 - Email/password registration, verification, sign-in, sign-out, password reset, and recovery states.
 - Set up Resend sending credentials, verified sender domain, and DNS before testing actual email delivery.
 - Add optional Google sign-in if requested; configure its local callback for port 3001.
@@ -39,6 +43,12 @@ Review: completed local database startup and development-only verification of is
 Review: create and verify an account, sign in, create a household, sign out, and reset a password. Review on a phone.
 
 ## Milestone 4 — Family invitations and access management
+
+Status: implemented and approved by the user for local commit. Review with a second real account and the new email design in recipient mail clients remains a manual follow-up. Includes owner-only family management, seven-day invitations for new/existing verified accounts, resend cooldown and token replacement, revocation, member removal, current membership enforcement, and transactional concurrency controls. Registration/sign-in preserve invitation context in an HttpOnly cookie without automatically creating a household. No additional provider setup is required beyond milestone 3.
+
+Also applied the requested Spanish branding: reusable brand header with basket, shared action-email template with inline PNG basket, and a single theme token source for CSS, email, and icon generation. Session, cookie, database, and repository identifiers retain their internal names to preserve sessions and saved data.
+
+Verification: lint, TypeScript, 50 unit tests, production build, and 31 disposable local database integration checks pass. Browser checks use a separate disposable database with outbound email disabled and cover invitation → sign-in → acceptance → shared household, member denial at family management, and owner management. Branded email preview inspected locally at mobile size; actual rendering in recipient mail clients and delivery of the new invitation email remain for user review. See `docs/family-sharing.md`. Stop here before milestone 5.
 
 - Owner-only Family management screen, invitations, resend/revoke, and member removal.
 - Expiring single-use hashed tokens bound to a verified recipient email.

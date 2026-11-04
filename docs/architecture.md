@@ -18,6 +18,10 @@ The integration verification suite always uses the fixed local endpoint and a ge
 
 ## Planned ownership model
 
+Milestone 3 implements verified email/password accounts using NextAuth JWT sessions and Node scrypt, following Scorecast's approach. Password resets invalidate previous sessions through a database session version checked on every protected request. Verification/recovery tokens are hashed fields on User and are atomically consumed with explicit expiry. MongoDB-backed attempt budgets are shared between workers. Email delivery uses Resend's REST API with server-side settings and the agreed sending domain; no Scorecast secrets are reused. See `accounts.md`.
+
+Registration does not create a household. Authenticated household creation locks the current user document in a transaction and writes the household and owner membership together. The household page reads current membership and calls the existing access guard. Server Actions perform mutations; only form status and NextAuth browser interactions require client components. Saved inventory remains a later milestone.
+
 Users have individual accounts. A household owns its inventory and shopping list, and has one owner plus members. Registration leads to creating a household or accepting an invitation, without silently creating an extra household for an invitee.
 
 Both owner and members can manage products, categories, quantities, and shopping items. Only the owner can invite, revoke invitations, remove members, rename, or delete the household. A member can leave. Owner departure or account deletion must not orphan the household: require an explicit ownership resolution first.
@@ -44,3 +48,9 @@ Initially refresh data on focus and periodically while visible; communicate offl
 ## Environments
 
 Separate local, preview, and production data and credentials. Never reuse Scorecast application secrets or production data. Privileged database and email credentials stay server-side. Email links use a configured application URL, not an untrusted incoming Host header. Production onboarding must not require hand-editing database records.
+
+## Family sharing and branding
+
+Milestone 4 implements seven-day email-bound invitations with hashed single-use tokens, owner-only management, resend/revoke, and member removal. Server Actions obtain current identity; transactions recheck session version, verification, ownership and membership. Household revisions serialize permission changes; user revisions serialize household creation and invitation acceptance, preventing simultaneous membership in multiple households. Removal preserves accounts, inventory, and activity. An HttpOnly context cookie carries invitations through signup/sign-in. See `family-sharing.md`.
+
+`lib/brand.ts` defines the Spanish app name; `Brand` shares the basket and name between headers. `styles/theme.json` provides color, font and size tokens to web and email. `npm run tokens` generates CSS variables, favicon and the inline email PNG from shared basket geometry, using sharp already supplied by Next.js. Dev/build regenerate these artifacts automatically. One action-email template creates HTML and plain text for verification, recovery, and invitations, escaping dynamic content.

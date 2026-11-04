@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🧺 GroceryList
+# 🧺 Lista de Compras
 
 ### A little less guessing. A little more home.
 
@@ -23,13 +23,13 @@ Know what you have, see what you need, and take care of home together.
 
 “Do we still have rice?” “How many bottles are left?” “Did someone already buy soap?”
 
-GroceryList is being built to make those everyday questions easier. From pantry staples to cleaning supplies, the goal is one shared place to track what is at home and what needs to go on the shopping list.
+Lista de Compras is being built to make those everyday questions easier. From pantry staples to cleaning supplies, the goal is one shared place to track what is at home and what needs to go on the shopping list.
 
 | 🥫 Know your stock | 🛒 Shop together | 🏡 Share a household |
 | --- | --- | --- |
 | Organize products and adjust quantities with a tap. | Share shopping needs and record what arrives home. | Use individual accounts with owner-managed invitations. |
 
-> 🚧 **Work in progress.** The visual preview is available, and the local database foundation has passed verification. Registration, invitations, saved inventory screens, and shared shopping are upcoming milestones.
+> 🚧 **Work in progress.** Accounts, household creation, and owner-managed family invitations are implemented. Account email delivery was confirmed by the user. Family sharing needs user review; saved inventory screens and shared shopping are upcoming milestones.
 
 ## ✨ Try the design preview
 
@@ -69,7 +69,13 @@ The database uses its own volume and port **27018**. The verification command cr
 
 **No Docker?** The [local database guide](docs/local-database.md) includes instructions for the MongoDB installation already present on your Mac.
 
-[`.env.example`](.env.example) documents the local defaults. No secrets are required locally. Future production credentials belong in ignored `.env.local` files and hosting settings.
+### 👤 Set up accounts and email
+
+Follow the [account setup guide](docs/accounts.md) to configure a unique session secret and a dedicated Resend API key. Lista de Compras currently uses the existing `updates.finalscore.win` sending domain, with its own sender name and credentials. No Google, Atlas, or Vercel setup is needed for this local milestone.
+
+Open `/register` to create an account, verify your email, then sign in and create a household at `/household`. Registration does not automatically create a household. The inventory preview remains sample data.
+
+[`.env.example`](.env.example) documents the local defaults. The preview and local database checks need no provider credentials; account email requires your own Resend key and session secret in ignored `.env.local`. Production credentials belong in hosting settings.
 
 ## 🛠️ Built with
 
@@ -79,8 +85,8 @@ The database uses its own volume and port **27018**. The verification command cr
 | Styling | Tailwind CSS · shared theme tokens | ✅ Configured |
 | Data foundation | MongoDB · Mongoose · eight domain models | ✅ Locally verified |
 | Validation | ESLint · TypeScript · Vitest · production build | ✅ Configured |
-| Authentication | Individual accounts and household memberships | 📋 Upcoming |
-| Email | Resend | 📋 Upcoming |
+| Authentication | NextAuth · verified accounts · household creation | ✅ Implemented; continuation authorized |
+| Email | Resend verification, recovery, and invitations | ✅ Account delivery confirmed; new design/invitations need manual review |
 | Hosting | Vercel · MongoDB Atlas | 📋 Upcoming |
 
 Frontend and backend live in **one repository**, following the sibling Scorecast project's architecture. The current preview is deliberately separate from persistent inventory workflows.
@@ -93,8 +99,8 @@ We stop after each milestone for testing and review.
 | --- | --- | --- |
 | **01 · Foundation** | Project setup, visual direction, sample inventory | ✅ Implemented |
 | **02 · Data foundation** | Local database, models, access helpers, and verification | ✅ Completed and reviewed |
-| **03 · Accounts** | Registration, verification, sign-in, recovery, household creation | ⏳ Next |
-| **04 · Family sharing** | Invitations and owner-only member management | 📋 Planned |
+| **03 · Accounts** | Registration, verification, sign-in, recovery, household creation | ✅ Email confirmed; continuation authorized |
+| **04 · Family sharing** | Invitations and owner-only member management | ✅ Implemented; approved for commit |
 | **05 · Inventory** | Products, categories, stock, activity, and undo | 📋 Planned |
 | **06 · Grocery list** | Shared shopping and confirmed stock receipt | 📋 Planned |
 | **07 · Hosted database** | Atlas, environment isolation, and recovery | 📋 Planned |
@@ -134,10 +140,13 @@ Unit tests run without MongoDB. Integration tests require the local replica set;
 | [`components/`](components/) | Shared interface and inventory preview |
 | [`models/`](models/) | Household, identity, inventory, and shopping schemas |
 | [`lib/`](lib/) | Database connection and household/reference guards |
-| [`styles/tokens.css`](styles/tokens.css) | Shared theme tokens |
+| [`styles/theme.json`](styles/theme.json) | Shared editable colors, fonts, and sizes for web and email |
+| [`styles/tokens.css`](styles/tokens.css) | Tailwind mapping for the generated theme variables |
 | [Implementation plan](docs/implementation-plan.md) | Milestones and review checkpoints |
 | [Architecture](docs/architecture.md) | Application design and access rules |
 | [Local database](docs/local-database.md) | Startup, verification, and troubleshooting |
+| [Accounts and email](docs/accounts.md) | Resend configuration and account review steps |
+| [Family sharing](docs/family-sharing.md) | Invitations, member management, and review steps |
 
 ## 📄 License
 

@@ -13,13 +13,17 @@
     "test:watch": "vitest",
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
-    "db:check": "vitest run --config vitest.integration.config.ts"
+    "db:check": "vitest run --config vitest.integration.config.ts",
+    "tokens": "node scripts/generate-theme.mjs",
+    "predev": "npm run tokens",
+    "prebuild": "npm run tokens"
   },
   "dependencies": {
+    "mongoose": "9.7.0",
     "next": "16.2.9",
+    "next-auth": "4.24.15",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "mongoose": "9.7.0"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.1",

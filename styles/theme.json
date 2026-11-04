@@ -1,0 +1,32 @@
+{
+  "colors": {
+    "background": "#f8f7f2",
+    "surface": "#ffffff",
+    "foreground": "#253d32",
+    "muted": "#647069",
+    "brand": "#375e46",
+    "brand-hover": "#274932",
+    "sage": "#e9eee3",
+    "line": "#e1e5dc",
+    "peach": "#f7e9da",
+    "warning": "#885126"
+  },
+  "fonts": {
+    "sans": "Arial, Helvetica, sans-serif",
+    "display": "Georgia, \"Times New Roman\", serif"
+  },
+  "sizes": {
+    "touch": "48px",
+    "brand-mark": "44px",
+    "brand-icon": "24px",
+    "content": "640px",
+    "space-sm": "12px",
+    "space-md": "24px",
+    "space-lg": "40px",
+    "radius-control": "12px",
+    "radius-panel": "24px",
+    "text-small": "14px",
+    "text-body": "16px",
+    "text-title": "32px"
+  }
+}

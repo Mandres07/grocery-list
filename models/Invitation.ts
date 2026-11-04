@@ -8,6 +8,7 @@ export interface IInvitation extends Timestamps {
   tokenHash: string;
   status: "pending" | "accepted" | "expired" | "revoked";
   expiresAt: Date;
+  sentAt: Date | null;
 }
 
 const schema = new Schema<IInvitation>({
@@ -17,6 +18,7 @@ const schema = new Schema<IInvitation>({
   tokenHash: { type: String, required: true, match: /^[a-f0-9]{64}$/, select: false },
   status: { type: String, required: true, enum: ["pending", "accepted", "expired", "revoked"], default: "pending" },
   expiresAt: { type: Date, required: true },
+  sentAt: { type: Date, default: null },
 }, schemaOptions);
 
 schema.index({ tokenHash: 1 }, { unique: true });

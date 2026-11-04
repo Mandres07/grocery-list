@@ -4,7 +4,7 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-family-sans);
 }
 
 button, a, input {
@@ -23,4 +23,16 @@ button, a {
 ::selection {
   background: var(--sage);
   color: var(--foreground);
+}
+
+@layer components {
+  .brand-link { @apply inline-flex items-center gap-3 text-base font-bold tracking-tight sm:text-lg; min-height: var(--size-touch); }
+  .brand-mark { @apply flex shrink-0 items-center justify-center rounded-2xl bg-brand text-surface; width: var(--size-brand-mark); height: var(--size-brand-mark); }
+  .brand-icon { width: var(--size-brand-icon); height: var(--size-brand-icon); }
+  .button-primary { @apply inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-surface hover:bg-brand-hover disabled:opacity-60; min-height: var(--size-touch); }
+  .button-secondary { @apply inline-flex items-center justify-center rounded-full border border-line px-5 text-sm font-semibold disabled:opacity-60; min-height: var(--size-touch); }
+  .form-input { @apply w-full rounded-xl border border-line bg-background px-4 text-base; min-height: var(--size-touch); }
+  .form-label { @apply mb-2 block text-sm font-semibold; }
+  .page-title { @apply font-display text-3xl sm:text-4xl; }
+  .notice { @apply rounded-2xl bg-sage p-4 text-sm leading-6; }
 }

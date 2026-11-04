@@ -1,4 +1,4 @@
-# GroceryList
+# Lista de Compras
 
 Mobile-first household inventory and shared shopping application. Follow the sibling Scorecast project's Next.js architecture, adapted for this domain.
 
@@ -15,6 +15,8 @@ Mobile-first household inventory and shared shopping application. Follow the sib
 - Use TypeScript with precise types; prefer Server Components with small client boundaries.
 - Keep route files focused; share feature code in `components/` and `lib/`.
 - Use Tailwind utilities and `styles/tokens.css`; build mobile-first with accessible native elements, visible focus, and usable touch targets.
+- Reuse components and shared styles instead of duplicating markup or hardcoding visual values. Define colors, typography, and reusable sizes in `styles/theme.json`; run `npm run tokens` after edits. Do not edit generated theme/icon outputs directly.
+- Keep the visible app name in `lib/brand.ts`, reuse the `Brand` header component with its basket, and use the shared branded action-email template for transactional emails.
 - Default user-facing copy to Spanish and internal names to English.
 - Use semantic HTML and handle loading, empty, error, and success states for real workflows.
 - Keep secrets out of source control and browser bundles.
