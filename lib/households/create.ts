@@ -4,6 +4,7 @@ import Household from "@/models/Household";
 import Membership from "@/models/Membership";
 import { connectToDatabase } from "@/lib/db";
 import { AccountError, displayName } from "@/lib/auth/validation";
+import { seedDefaultCategories } from "@/lib/inventory/default-categories";
 import { requireObjectId } from "./access";
 
 // The caller obtains identity from requireVerifiedUser, never from form fields.
@@ -20,7 +21,8 @@ export async function createHousehold(userId: string, sessionVersion: number, ra
     if (!current) throw new AccountError("Inicia sesión de nuevo para crear tu hogar.");
     const existing = await Membership.exists({ userId: user }).session(session);
     if (existing) throw new AccountError("Ya perteneces a un hogar. Actualiza la página para verlo.");
-    const [household] = await Household.create([{ name, ownerId: user }], { session });
+    const [household] = await Household.create([{ name, ownerId: user, defaultCategoriesInitializedAt: new Date() }], { session });
+    await seedDefaultCategories(household._id, session);
     await Membership.create([{ householdId: household._id, userId: user }], { session });
     return household._id.toString();
   });

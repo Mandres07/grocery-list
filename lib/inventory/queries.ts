@@ -3,12 +3,14 @@ import { requireHouseholdAccess, requireObjectId } from "@/lib/households/access
 import type { HouseholdActor } from "@/lib/households/mutation-access";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
-import Product from "@/models/Product";
+import Product, { type IProduct } from "@/models/Product";
+import type { Types } from "mongoose";
 import Category from "@/models/Category";
 import StockMovement from "@/models/StockMovement";
+import { parseActivityFilters, literalNamePattern, type ActivityFilters } from "./activity-filters";
 import { descendantCategoryIds, type InventoryCategory } from "./categories";
 
-async function requireInventoryReadAccess(actor: HouseholdActor, householdId: string) {
+export async function requireInventoryReadAccess(actor: HouseholdActor, householdId: string) {
   await connectToDatabase();
   if (!await User.exists({ _id: requireObjectId(actor.id), sessionVersion: actor.sessionVersion, emailVerifiedAt: { $ne: null } })) {
     throw new AccountError("Inicia sesión de nuevo y verifica tu correo para continuar.");
@@ -27,12 +29,22 @@ export async function listInventory(actor: HouseholdActor, householdId: string, 
     archivedAt: filters.archived ? { $ne: null } : null,
     ...(query ? { name: { $regex: query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), $options: "i" } } : {}),
     ...(categoryId ? { categoryId: { $in: descendantCategoryIds(categories, categoryId).map(requireObjectId) } } : {}),
-    ...(filters.lowStock ? { lowStockThreshold: { $ne: null }, $expr: { $lte: ["$quantity", "$lowStockThreshold"] } } : {}),
+    ...(filters.lowStock ? { $or: [{ quantity: 0 }, { lowStockThreshold: { $ne: null }, $expr: { $lte: ["$quantity", "$lowStockThreshold"] } }] } : {}),
   };
-  const [products, total] = await Promise.all([Product.find(filter).sort({ name: 1, _id: 1 }).limit(100).lean(), Product.countDocuments(filter)]);
+  const records = filters.archived ? Product.find(filter).sort({ name: 1, _id: 1 }).limit(100).lean() : Product.aggregate<IProduct & { _id: Types.ObjectId }>([
+    { $match: filter },
+    { $addFields: { stockPriority: { $switch: { branches: [
+      { case: { $eq: ["$quantity", 0] }, then: 0 },
+      { case: { $and: [{ $ne: [{ $ifNull: ["$lowStockThreshold", null] }, null] }, { $lte: ["$quantity", "$lowStockThreshold"] }] }, then: 1 },
+    ], default: 2 } } } },
+    { $sort: { stockPriority: 1, name: 1, _id: 1 } },
+    { $limit: 100 },
+    { $unset: "stockPriority" },
+  ]);
+  const [products, total] = await Promise.all([records, Product.countDocuments(filter)]);
   return { categories, total, products: products.map((product) => ({
     id: product._id.toString(), name: product.name, unit: product.unit, quantity: product.quantity,
-    categoryId: product.categoryId?.toString() ?? null, lowStockThreshold: product.lowStockThreshold,
+    categoryId: product.categoryId?.toString() ?? null, lowStockThreshold: product.lowStockThreshold ?? null,
     revision: product.revision ?? 0, archived: Boolean(product.archivedAt),
   })) };
 }
@@ -52,13 +64,27 @@ export async function getInventoryProduct(actor: HouseholdActor, householdId: st
   const product = await Product.findOne({ _id: requireObjectId(productId), householdId: access.householdId }).lean();
   if (!product) return null;
   return { id: product._id.toString(), name: product.name, unit: product.unit, quantity: product.quantity,
-    categoryId: product.categoryId?.toString() ?? null, lowStockThreshold: product.lowStockThreshold,
+    categoryId: product.categoryId?.toString() ?? null, lowStockThreshold: product.lowStockThreshold ?? null,
     revision: product.revision ?? 0, archived: Boolean(product.archivedAt) };
 }
 
-export async function listInventoryActivity(actor: HouseholdActor, householdId: string, productId?: string) {
+export async function listInventoryActivity(actor: HouseholdActor, householdId: string, productId?: string, filters: Partial<ActivityFilters> = {}) {
   const access = await requireInventoryReadAccess(actor, householdId);
-  const filter = { householdId: access.householdId, ...(productId ? { productId: requireObjectId(productId) } : {}) };
+  const parsed = parseActivityFilters(filters);
+  if (parsed.error) throw new AccountError(parsed.error);
+  const selectedProductId = productId ? requireObjectId(productId) : undefined;
+  const query = parsed.filters.query;
+  const person = parsed.filters.person;
+  const [matchingProducts, matchingActors] = await Promise.all([
+    query ? Product.find({ householdId: access.householdId, ...(selectedProductId ? { _id: selectedProductId } : {}), name: literalNamePattern(query) }).select("_id").lean() : null,
+    person ? StockMovement.distinct("actorId", { householdId: access.householdId }).then((actorIds) => User.find({ _id: { $in: actorIds }, name: literalNamePattern(person) }).select("_id").lean()) : null,
+  ]);
+  const filter = {
+    householdId: access.householdId,
+    ...(matchingProducts ? { productId: { $in: matchingProducts.map((item) => item._id) } } : selectedProductId ? { productId: selectedProductId } : {}),
+    ...(matchingActors ? { actorId: { $in: matchingActors.map((item) => item._id) } } : {}),
+    ...(Object.keys(parsed.dateRange).length ? { createdAt: parsed.dateRange } : {}),
+  };
   const movements = await StockMovement.find(filter).sort({ createdAt: -1, _id: -1 }).limit(50).lean();
   const [users, products, undone] = await Promise.all([
     User.find({ _id: { $in: movements.map((item) => item.actorId) } }).select("name").lean(),

@@ -1,26 +1,21 @@
-import { randomUUID } from "node:crypto";
-import { ActionForm } from "@/components/ui/action-form";
-import { FormField } from "@/components/ui/form-field";
-import { CategorySelect } from "./product-fields";
+import { Icon } from "@/components/ui/icon";
+import { RecordRow } from "@/components/ui/record-row";
 import { categoryLabels, type InventoryCategory } from "@/lib/inventory/categories";
-import { inventoryAction } from "@/app/(account)/inventory/actions";
+import { CategoryDialog } from "./category-dialog";
 
-export function CategoryManager({ householdId, categories }: { householdId: string; categories: InventoryCategory[] }) {
-  return <details className="disclosure section-separated">
-    <summary className="disclosure-trigger">Gestionar categorías</summary>
-    <h2 className="heading-section mt-4">Nueva categoría</h2>
-    <ActionForm action={inventoryAction} requestId={randomUUID()} submitLabel="Crear categoría" hiddenFields={{ householdId, kind: "save-category" }} resetOnSuccess>
-      <FormField label="Nombre de la categoría" name="name" required maxLength={100} />
-      <CategorySelect name="parentId" label="Dentro de otra categoría (opcional)" categories={categories} />
-    </ActionForm>
-    {categories.length === 0 ? <p className="mt-4 text-sm text-muted">Puedes organizar los productos sin categorías o crear la primera aquí.</p> : <ul className="mt-4">{categoryLabels(categories).map((category) => <li key={category.id}>
-      <details className="disclosure"><summary className="disclosure-trigger">{category.label}</summary>
-        <ActionForm action={inventoryAction} requestId={randomUUID()} submitLabel="Guardar categoría" hiddenFields={{ householdId, kind: "save-category", categoryId: category.id }}>
-          <FormField label="Nombre" name="name" defaultValue={category.name} required maxLength={100} />
-          <CategorySelect name="parentId" label="Categoría superior" categories={categories} defaultValue={category.parentId ?? ""} excludeId={category.id} />
-        </ActionForm>
-        <ActionForm action={inventoryAction} requestId={randomUUID()} submitLabel="Eliminar categoría vacía" hiddenFields={{ householdId, kind: "delete-category", categoryId: category.id }} />
-      </details>
+export function CategoryManager({ householdId, categories, visibleCategories = categoryLabels(categories) }: {
+  householdId: string; categories: InventoryCategory[]; visibleCategories?: ReturnType<typeof categoryLabels>;
+}) {
+  const labels = new Map(categoryLabels(categories).map((category) => [category.id, category.label]));
+  return <>
+    <p className="mt-4 text-xs text-muted">{visibleCategories.length} {visibleCategories.length === 1 ? "categoría encontrada" : "categorías encontradas"}</p>
+    {visibleCategories.length === 0 ? <p className="notice mt-4">No hay categorías en esta vista. Agrega una o cambia los filtros.</p> : <ul className="record-list collection-surface mt-2">{visibleCategories.map((category) => <li key={category.id}>
+      <RecordRow leading={<span className="symbol-muted"><Icon name="folder" className="glyph-icon" /></span>} title={category.name} description={category.parentId ? `Dentro de ${labels.get(category.parentId) ?? "otra categoría"}` : "Principal"}>
+        <div className="flex flex-wrap gap-2">
+          <CategoryDialog householdId={householdId} categories={categories} category={category} />
+          <CategoryDialog householdId={householdId} categories={categories} category={category} deleting />
+        </div>
+      </RecordRow>
     </li>)}</ul>}
-  </details>;
+  </>;
 }

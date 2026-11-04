@@ -5,6 +5,7 @@ import { User, Household, Membership, Invitation, Category, Product, StockMoveme
 import { requireHouseholdAccess } from "@/lib/households/access";
 import { requireProductInHousehold, validateCategoryParent } from "@/lib/inventory/references";
 import { authenticateAccount, registerAccount, requestAccountEmail, resetAccountPassword, tokenHash, verifyAccountEmail } from "@/lib/auth/accounts";
+import { DEFAULT_CATEGORY_NAMES, ensureDefaultCategories } from "@/lib/inventory/default-categories";
 import { createHousehold } from "@/lib/households/create";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { sendAccountEmail, sendInvitationEmail } from "@/lib/email/account-email";
@@ -456,6 +457,96 @@ describe("shared inventory workflows", () => {
     productId = (await createProduct(owner, home, randomUUID(), input)).id;
   });
 
+  it("creates basic categories atomically with each new household", async () => {
+    expect((await Category.find({ householdId: home }).lean()).map((item) => item.name).sort()).toEqual([...DEFAULT_CATEGORY_NAMES].sort());
+    expect((await Household.findById(home))!.defaultCategoriesInitializedAt).toBeInstanceOf(Date);
+  });
+
+  it("backfills legacy homes once while preserving existing category IDs and inventory", async () => {
+    await Category.deleteMany({ householdId: home });
+    await Household.updateOne({ _id: home }, { $unset: { defaultCategoriesInitializedAt: 1 } });
+    const existing = await Category.create({ householdId: home, name: "despensa", parentId: null });
+    await Promise.all([ensureDefaultCategories(owner, home), ensureDefaultCategories(member, home)]);
+    expect(await Category.countDocuments({ householdId: home })).toBe(DEFAULT_CATEGORY_NAMES.length);
+    expect((await Category.findById(existing._id))!.name).toBe("despensa");
+    expect(await Product.countDocuments({ householdId: home })).toBe(1);
+    expect((await Product.findById(productId))!.quantity).toBe(2);
+    expect((await Household.findById(home))!.defaultCategoriesInitializedAt).toBeInstanceOf(Date);
+  });
+
+  it("does not recreate default categories after users rename or delete them", async () => {
+    const renamed = await Category.findOne({ householdId: home, name: "Bebidas" });
+    const deleted = await Category.findOne({ householdId: home, name: "Limpieza" });
+    await saveCategory(owner, home, randomUUID(), { id: renamed!._id.toString(), name: "Mis bebidas", parentId: null });
+    await deleteCategory(member, home, randomUUID(), deleted!._id.toString());
+    await ensureDefaultCategories(member, home);
+    expect(await Category.exists({ householdId: home, name: { $in: ["Bebidas", "Limpieza"] } })).toBeNull();
+    expect(await Category.countDocuments({ householdId: home })).toBe(DEFAULT_CATEGORY_NAMES.length - 1);
+    expect(await Category.exists({ householdId: home, name: "Mis bebidas" })).not.toBeNull();
+  });
+
+  it("denies default initialization to outsiders, unverified members, and stale sessions", async () => {
+    await Household.updateOne({ _id: home }, { $unset: { defaultCategoriesInitializedAt: 1 } });
+    await expect(ensureDefaultCategories(outsider, home)).rejects.toThrow("permiso");
+    await User.updateOne({ _id: member.id }, { $set: { emailVerifiedAt: null } });
+    await expect(ensureDefaultCategories(member, home)).rejects.toThrow("verifica");
+    await expect(ensureDefaultCategories({ ...owner, sessionVersion: 99 }, home)).rejects.toThrow("Inicia sesión");
+    expect((await Household.findById(home))!.defaultCategoriesInitializedAt).toBeNull();
+  });
+
+  it("creates a product and its new subcategory together and deduplicates retries", async () => {
+    const parent = await Category.findOne({ householdId: home, name: "Despensa" });
+    const requestId = randomUUID();
+    const draft = { ...input, name: "Atún", newCategoryName: "Conservas", newCategoryParentId: parent!._id.toString() };
+    const result = await createProduct(member, home, requestId, draft);
+    expect(await createProduct(member, home, requestId, draft)).toEqual(result);
+    const category = await Category.findOne({ householdId: home, name: "Conservas" });
+    expect(category!.parentId!.toString()).toBe(parent!._id.toString());
+    expect((await Product.findById(result.id))!.categoryId!.toString()).toBe(category!._id.toString());
+    expect(await Category.countDocuments({ householdId: home, name: "Conservas" })).toBe(1);
+    expect(await StockMovement.countDocuments({ householdId: home, requestId })).toBe(1);
+  });
+
+  it("reuses one category when two members create it with their products concurrently", async () => {
+    const results = await Promise.all([
+      createProduct(owner, home, randomUUID(), { ...input, name: "Pasta", newCategoryName: "Especiales" }),
+      createProduct(member, home, randomUUID(), { ...input, name: "Salsa", newCategoryName: "especiales" }),
+    ]);
+    const products = await Product.find({ _id: { $in: results.map((item) => item.id) } });
+    expect(products[0].categoryId!.toString()).toBe(products[1].categoryId!.toString());
+    expect(await Category.countDocuments({ householdId: home, name: /^especiales$/i })).toBe(1);
+  });
+
+  it("rolls back inline category creation if saving the product fails, then allows a safe retry", async () => {
+    const requestId = randomUUID();
+    const draft = { ...input, name: "Nuevo producto", newCategoryName: "Nueva categoría" };
+    const insert = vi.spyOn(Product, "create").mockRejectedValueOnce(new Error("Product insert failed"));
+    try {
+      await expect(createProduct(owner, home, requestId, draft)).rejects.toThrow("Product insert failed");
+      expect(await Category.exists({ householdId: home, name: "Nueva categoría" })).toBeNull();
+      expect(await Product.exists({ householdId: home, name: "Nuevo producto" })).toBeNull();
+    } finally { insert.mockRestore(); }
+    await expect(createProduct(owner, home, requestId, draft)).resolves.toBeDefined();
+    expect(await Category.countDocuments({ householdId: home, name: "Nueva categoría" })).toBe(1);
+  });
+
+  it("rejects cross-household category parents and ambiguous category choices", async () => {
+    const foreign = await Category.findOne({ householdId: otherHome });
+    await expect(createProduct(member, home, randomUUID(), { ...input, newCategoryName: "Forbidden", newCategoryParentId: foreign!._id.toString() })).rejects.toThrow("no pertenece");
+    const local = await Category.findOne({ householdId: home });
+    await expect(createProduct(member, home, randomUUID(), { ...input, categoryId: local!._id.toString(), newCategoryName: "Ambiguous" })).rejects.toThrow("Elige una categoría");
+    expect(await Category.exists({ householdId: home, name: { $in: ["Forbidden", "Ambiguous"] } })).toBeNull();
+  });
+
+  it("supports inline category creation on edit and rolls it back on revision conflict", async () => {
+    await editProduct(member, home, randomUUID(), productId, 0, { ...input, newCategoryName: "Mi categoría" });
+    const product = await Product.findById(productId);
+    expect((await Category.findById(product!.categoryId))!.name).toBe("Mi categoría");
+    await expect(editProduct(owner, home, randomUUID(), productId, 0, { ...input, newCategoryName: "Orphan" })).rejects.toThrow("cambió");
+    expect(await Category.exists({ householdId: home, name: "Orphan" })).toBeNull();
+    expect((await Product.findById(productId))!.quantity).toBe(2);
+  });
+
   it("saves initial stock with its actor and lets both members read it", async () => {
     expect(await getInventoryProduct(member, home, productId)).toMatchObject({ name: "Arroz", quantity: 2, lowStockThreshold: 1, revision: 0 });
     const activity = await listInventoryActivity(owner, home);
@@ -464,6 +555,60 @@ describe("shared inventory workflows", () => {
     expect(activity[0].actorName).toContain("Inventario");
     await expect(listInventory(outsider, home)).rejects.toThrow("permiso");
     expect(await getInventoryProduct(outsider, otherHome, productId)).toBeNull();
+  });
+
+  it("filters names before the movement limit and keeps matches household-scoped", async () => {
+    await User.updateOne({ _id: owner.id }, { $set: { name: "Ana Compras" } });
+    await User.updateOne({ _id: member.id }, { $set: { name: "Luis" } });
+    const oats = await Product.create({ householdId: home, name: "Avena antigua" });
+    const old = await StockMovement.create({ householdId: home, productId: oats._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date("2001-01-01T12:00:00Z") });
+    await StockMovement.insertMany(Array.from({ length: 60 }, () => ({ householdId: home, productId, actorId: member.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date("2002-01-01T12:00:00Z") })));
+    const foreign = await Product.create({ householdId: otherHome, name: "Avena antigua" });
+    await StockMovement.create({ householdId: otherHome, productId: foreign._id, actorId: outsider.id, delta: 1, reason: "receipt", requestId: randomUUID() });
+    expect((await listInventoryActivity(owner, home, undefined, { query: "AVENA", person: "ana" })).map((item) => item.id)).toEqual([old._id.toString()]);
+    expect((await listInventoryActivity(owner, home, undefined, { query: "avena" })).map((item) => item.id)).toEqual([old._id.toString()]);
+    expect((await listInventoryActivity(owner, home, undefined, { person: "ana" })).some((item) => item.id === old._id.toString())).toBe(true);
+    expect(await listInventoryActivity(owner, home, undefined, { person: "Nobody" })).toEqual([]);
+  });
+
+  it("includes both date boundaries in Panama time and excludes neighboring days", async () => {
+    const dated = await Product.create({ householdId: home, name: "Fechas" });
+    const times = ["2026-11-04T04:59:59.999Z", "2026-11-04T05:00:00.000Z", "2026-11-05T04:59:59.999Z", "2026-11-05T05:00:00.000Z"];
+    const rows = await StockMovement.insertMany(times.map((date) => ({ householdId: home, productId: dated._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date(date) })));
+    const results = await listInventoryActivity(owner, home, undefined, { query: "Fechas", from: "2026-11-04", to: "2026-11-04" });
+    expect(results.map((item) => item.id)).toEqual([rows[2]._id.toString(), rows[1]._id.toString()]);
+  });
+
+  it("uses literal product/person text instead of accepting regular expressions", async () => {
+    await User.updateOne({ _id: owner.id }, { $set: { name: "Persona (prueba)" } });
+    const literal = await Product.create({ householdId: home, name: "Arroz [integral]" });
+    const movement = await StockMovement.create({ householdId: home, productId: literal._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID() });
+    expect((await listInventoryActivity(owner, home, undefined, { query: "[integral]", person: "(prueba)" })).map((item) => item.id)).toEqual([movement._id.toString()]);
+    expect(await listInventoryActivity(owner, home, undefined, { query: ".*" })).toEqual([]);
+    expect(await listInventoryActivity(owner, home, undefined, { person: ".*" })).toEqual([]);
+  });
+
+  it("searches archived products and people who previously belonged to the household", async () => {
+    await User.updateOne({ _id: member.id }, { $set: { name: "Persona anterior" } });
+    const movement = await adjustStock(member, home, randomUUID(), productId, 1);
+    await setProductArchived(owner, home, randomUUID(), productId, true);
+    await Membership.deleteOne({ householdId: home, userId: member.id });
+    expect((await listInventoryActivity(owner, home, undefined, { query: "Arroz", person: "anterior" })).map((item) => item.id)).toEqual([movement.movementId]);
+  });
+
+  it("keeps undo eligibility accurate when the undo lies outside the filtered date range", async () => {
+    const movement = await adjustStock(owner, home, randomUUID(), productId, 1);
+    await StockMovement.collection.updateOne({ _id: new Types.ObjectId(movement.movementId!) }, { $set: { createdAt: new Date("2001-01-01T12:00:00Z") } });
+    await undoStockMovement(owner, home, randomUUID(), movement.movementId!);
+    const results = await listInventoryActivity(owner, home, undefined, { from: "2001-01-01", to: "2001-01-01" });
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({ id: movement.movementId, canUndo: false });
+  });
+
+  it("rejects invalid date ranges and unauthorized filtered reads", async () => {
+    await expect(listInventoryActivity(owner, home, undefined, { from: "2026-02-30" })).rejects.toThrow("día válido");
+    await expect(listInventoryActivity(owner, home, undefined, { from: "2026-11-05", to: "2026-11-01" })).rejects.toThrow("posterior");
+    await expect(listInventoryActivity(outsider, home, undefined, { query: "Arroz", person: "Inventario" })).rejects.toThrow("permiso");
   });
 
   it("deduplicates stock retries and rejects reuse for a different actor or payload", async () => {
@@ -617,7 +762,59 @@ describe("shared inventory workflows", () => {
     await editProduct(owner, home, randomUUID(), productId, 3, { ...input, categoryId: null });
     await deleteCategory(member, home, randomUUID(), child.id);
     await deleteCategory(owner, home, randomUUID(), parent.id);
-    expect(await Category.countDocuments({ householdId: home })).toBe(0);
+    expect((await Category.find({ householdId: home }).lean()).map((item) => item.name).sort()).toEqual([...DEFAULT_CATEGORY_NAMES].sort());
+  });
+
+  it("prioritizes empty and threshold stock before the page limit, alphabetically within each group", async () => {
+    await Product.insertMany([
+      ...Array.from({ length: 110 }, (_, index) => ({ householdId: home, name: `A normal ${String(index).padStart(3, "0")}`, quantity: 10, lowStockThreshold: 1 })),
+      { householdId: home, name: "Z agotado", quantity: 0, lowStockThreshold: null },
+      { householdId: home, name: "A agotado", quantity: 0, lowStockThreshold: 0 },
+      { householdId: home, name: "Z por reponer", quantity: 3, lowStockThreshold: 3 },
+      { householdId: home, name: "B sin aviso", quantity: 5, lowStockThreshold: null },
+      { householdId: home, name: "Y con existencias", quantity: 1, lowStockThreshold: 0 },
+    ]);
+    await Product.create({ householdId: otherHome, name: "Otro hogar agotado", quantity: 0 });
+    const result = await listInventory(member, home);
+    expect(result.total).toBe(116);
+    expect(result.products).toHaveLength(100);
+    expect(result.products.slice(0, 3).map((item) => item.name)).toEqual(["A agotado", "Z agotado", "Z por reponer"]);
+    expect(result.products.some((item) => item.name === "Otro hogar agotado")).toBe(false);
+    const low = await listInventory(owner, home, { lowStock: true });
+    expect(low.products.map((item) => item.name)).toEqual(["A agotado", "Z agotado", "Z por reponer"]);
+    expect(low.total).toBe(3);
+    expect((await listInventory(owner, home, { query: "agotado" })).products.map((item) => item.name)).toEqual(["A agotado", "Z agotado"]);
+  });
+
+  it("excludes archived products from buying priority and preserves alphabetical archive browsing", async () => {
+    await Product.insertMany([
+      { householdId: home, name: "A archivado", quantity: 5, lowStockThreshold: 1, archivedAt: new Date() },
+      { householdId: home, name: "Z archivado", quantity: 0, lowStockThreshold: null, archivedAt: new Date() },
+      { householdId: home, name: "B activo", quantity: 0, lowStockThreshold: null },
+    ]);
+    expect((await listInventory(owner, home)).products.map((item) => item.name)).toEqual(["B activo", "Arroz"]);
+    expect((await listInventory(owner, home, { archived: true })).products.map((item) => item.name)).toEqual(["A archivado", "Z archivado"]);
+  });
+
+  it("recomputes buying priority after replenishing or consuming stock", async () => {
+    const missing = await createProduct(owner, home, randomUUID(), { ...input, name: "Z falta", quantity: "0" });
+    expect((await listInventory(owner, home)).products.map((item) => item.name)).toEqual(["Z falta", "Arroz"]);
+    await adjustStock(member, home, randomUUID(), missing.id, 1);
+    expect((await listInventory(owner, home)).products.map((item) => item.name)).toEqual(["Z falta", "Arroz"]);
+    await adjustStock(owner, home, randomUUID(), missing.id, 1);
+    expect((await listInventory(owner, home)).products.map((item) => item.name)).toEqual(["Arroz", "Z falta"]);
+    await adjustStock(member, home, randomUUID(), productId, -1);
+    expect((await listInventory(owner, home, { lowStock: true })).products.map((item) => item.name)).toEqual(["Arroz"]);
+  });
+
+  it("handles legacy products without a warning threshold", async () => {
+    const legacyId = new Types.ObjectId();
+    await Product.collection.insertOne({ _id: legacyId, householdId: new Types.ObjectId(home), name: "Z legado", unit: "unidades", quantity: 0, archivedAt: null, revision: 0 });
+    const empty = await listInventory(owner, home, { lowStock: true });
+    expect(empty.products).toHaveLength(1);
+    expect(empty.products[0]).toMatchObject({ id: legacyId.toString(), lowStockThreshold: null });
+    await Product.collection.updateOne({ _id: legacyId }, { $set: { quantity: 4 } });
+    expect((await listInventory(owner, home, { lowStock: true })).products).toEqual([]);
   });
 
   it("searches literal text, filters low stock, and includes categories without leaking another home", async () => {

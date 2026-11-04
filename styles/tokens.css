@@ -2,6 +2,7 @@
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface-muted: var(--surface-muted);
   --color-surface: var(--surface);
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);

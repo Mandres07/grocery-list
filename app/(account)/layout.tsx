@@ -7,7 +7,6 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
   return (
     <div className="content-shell">
       <main id="main" className="content-region">{children}</main>
-      <footer className="py-5 text-center text-xs text-muted">Un hogar. Un equipo.</footer>
     </div>
   );
 }

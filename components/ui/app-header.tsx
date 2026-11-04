@@ -1,13 +1,15 @@
 import Link from "next/link";
+import { NavigationLink } from "./navigation-link";
+import { Icon } from "./icon";
 import { Brand } from "./brand";
 import { DisclosureMenu } from "./disclosure-menu";
 import { SignOutButton } from "@/components/auth/sign-in-form";
 
 function AccountLinks({ emailVerified, className }: { emailVerified: boolean; className: string }) {
   return <>
-    <Link href="/household" className={className}>Mi hogar</Link>
-    {emailVerified && <Link href="/inventory" className={className}>Inventario</Link>}
-    <Link href="/account" className={className}>Mi cuenta</Link>
+    {emailVerified && <NavigationLink href="/inventory" className={className}><Icon name="basket" className="glyph-icon" />Inventario</NavigationLink>}
+    <NavigationLink href="/household" className={className}><Icon name="home" className="glyph-icon" />Mi hogar</NavigationLink>
+    <NavigationLink href="/account" className={className}><Icon name="user" className="glyph-icon" />Mi cuenta</NavigationLink>
   </>;
 }
 

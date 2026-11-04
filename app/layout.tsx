@@ -1,9 +1,19 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { unstable_rethrow } from "next/navigation";
 import "./globals.css";
+import { AppFooter } from "@/components/ui/app-footer";
 import { AppHeader } from "@/components/ui/app-header";
 import { getCurrentUser } from "@/lib/auth/session";
 import { APP_NAME } from "@/lib/brand";
+
+const manrope = localFont({
+  src: "./fonts/Manrope-Variable.ttf",
+  variable: "--font-manrope",
+  weight: "200 800",
+  style: "normal",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: `${APP_NAME} · Tu hogar, en orden`,
@@ -19,8 +29,8 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     return null;
   });
   return (
-    <html lang="es">
-      <body className="antialiased"><AppHeader user={user} />{children}</body>
+    <html lang="es" className={manrope.variable}>
+      <body className="antialiased viewport-column"><AppHeader user={user} /><div className="flex-1">{children}</div><AppFooter /></body>
     </html>
   );
 }

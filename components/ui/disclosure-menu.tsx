@@ -4,7 +4,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "./icon";
 
-export function DisclosureMenu({ label, children }: { label: string; children: ReactNode }) {
+export function DisclosureMenu({ label, children, trigger, triggerClassName = "action-quiet action-inverse action-icon disclosure-toggle cursor-pointer list-none", closeOnContentClick = true }: {
+  label: string; children: ReactNode; trigger?: ReactNode; triggerClassName?: string; closeOnContentClick?: boolean;
+}) {
   const ref = useRef<HTMLDetailsElement>(null);
   const pathname = usePathname();
   useEffect(() => {
@@ -32,13 +34,14 @@ export function DisclosureMenu({ label, children }: { label: string; children: R
       document.removeEventListener("keydown", escape);
     };
   }, []);
-  return <details ref={ref} className="group relative" onClick={(event) => {
-    if (event.target instanceof Element && !event.target.closest("summary")) event.currentTarget.open = false;
+  return <details ref={ref} className="group relative reveal-disclosure" onClick={(event) => {
+    if (event.target instanceof Element && !event.target.closest("summary") && (closeOnContentClick || event.target.closest("a, button"))) event.currentTarget.open = false;
   }}>
-    <summary className="action-quiet action-inverse action-icon disclosure-toggle cursor-pointer list-none" aria-label={label}>
-      <Icon name="menu" className="size-6 group-open:hidden" />
-      <Icon name="close" className="hidden size-6 group-open:block" />
+    <summary className={triggerClassName} aria-label={label}>
+      {trigger ?? <>
+      <Icon name="menu-toggle" className="size-6 morph-menu" />
       <span className="hidden sm:inline">Menú</span>
+      </>}
     </summary>
     {children}
   </details>;

@@ -48,16 +48,37 @@ async function movement(context: MutationContext, productId: Types.ObjectId, req
   return record._id.toString();
 }
 
-export interface ProductInput { name: unknown; unit: unknown; categoryId: unknown; quantity: unknown; lowStockThreshold: unknown }
+export interface ProductInput { name: unknown; unit: unknown; categoryId: unknown; quantity: unknown; lowStockThreshold: unknown; newCategoryName?: unknown; newCategoryParentId?: unknown }
 function productFields(input: Omit<ProductInput, "quantity">) {
   return { name: inventoryName(input.name), unit: inventoryName(input.unit, 60), categoryId: optionalId(input.categoryId), lowStockThreshold: optionalQuantity(input.lowStockThreshold) };
 }
 
+function categoryDraft(input: Omit<ProductInput, "quantity">) {
+  const name = input.newCategoryName == null || input.newCategoryName === "" ? null : inventoryName(input.newCategoryName, 100);
+  const parentId = optionalId(input.newCategoryParentId ?? null);
+  if (!name && parentId) throw new AccountError("Escribe el nombre de la nueva categoría.");
+  if (name && optionalId(input.categoryId)) throw new AccountError("Elige una categoría existente o crea una nueva.");
+  return name ? { name, parentId } : null;
+}
+
+async function resolveProductCategory(context: MutationContext, categoryId: Types.ObjectId | null, draft: ReturnType<typeof categoryDraft>) {
+  if (!draft) {
+    if (categoryId) await requireCategoryInHousehold(context.householdId, categoryId, context.session);
+    return categoryId;
+  }
+  if (draft.parentId) await requireCategoryInHousehold(context.householdId, draft.parentId, context.session);
+  const existing = await Category.findOne({ householdId: context.householdId, ...draft }).collation({ locale: "es", strength: 2 }).session(context.session);
+  if (existing) return existing._id;
+  const [category] = await Category.create([{ householdId: context.householdId, ...draft }], { session: context.session });
+  return category._id;
+}
+
 export async function createProduct(actor: HouseholdActor, householdId: string, requestId: string, input: ProductInput) {
   const fields = { ...productFields(input), quantity: wholeNumber(input.quantity) };
-  return mutate(actor, householdId, requestId, "product-create", fields, async (context) => {
-    if (fields.categoryId) await requireCategoryInHousehold(context.householdId, fields.categoryId, context.session);
-    const [product] = await Product.create([{ householdId: context.householdId, ...fields }], { session: context.session });
+  const draft = categoryDraft(input);
+  return mutate(actor, householdId, requestId, "product-create", { ...fields, ...(draft ? { draft } : {}) }, async (context) => {
+    const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
+    const [product] = await Product.create([{ householdId: context.householdId, ...fields, categoryId }], { session: context.session });
     return { id: product._id.toString(), movementId: await movement(context, product._id, requestId, 0, fields.quantity, "receipt") };
   });
 }
@@ -71,9 +92,10 @@ export async function editProduct(actor: HouseholdActor, householdId: string, re
   const id = requireObjectId(productId);
   const revision = wholeNumber(expectedRevision);
   const fields = productFields(input);
-  return mutate(actor, householdId, requestId, "product-edit", { id, revision, ...fields }, async (context) => {
-    if (fields.categoryId) await requireCategoryInHousehold(context.householdId, fields.categoryId, context.session);
-    const updated = await Product.updateOne({ _id: id, householdId: context.householdId, archivedAt: null, ...revisionFilter(revision) }, { $set: fields, $inc: { revision: 1 } }, { session: context.session, runValidators: true });
+  const draft = categoryDraft(input);
+  return mutate(actor, householdId, requestId, "product-edit", { id, revision, ...fields, ...(draft ? { draft } : {}) }, async (context) => {
+    const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
+    const updated = await Product.updateOne({ _id: id, householdId: context.householdId, archivedAt: null, ...revisionFilter(revision) }, { $set: { ...fields, categoryId }, $inc: { revision: 1 } }, { session: context.session, runValidators: true });
     if (!updated.modifiedCount) throw new AccountError("El producto cambió o ya no está disponible. Actualiza la página antes de editarlo.");
     return { id: productId, movementId: null };
   });

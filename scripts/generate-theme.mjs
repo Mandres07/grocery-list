@@ -4,6 +4,8 @@ import sharp from "sharp";
 const theme = JSON.parse(readFileSync(new URL("../styles/theme.json", import.meta.url), "utf8"));
 const entries = [
   ...Object.entries(theme.colors),
+  ...Object.entries(theme.motion).map(([name, value]) => [`motion-${name}`, value]),
+  ...Object.entries(theme.shadows).map(([name, value]) => [`shadow-${name}`, value]),
   ...Object.entries(theme.sizes).map(([name, value]) => [`size-${name}`, value]),
   ...Object.entries(theme.fonts).map(([name, value]) => [`font-family-${name}`, value]),
 ];

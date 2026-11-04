@@ -22,7 +22,6 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <li className="flex items-center gap-3"><Icon name="check" className="size-4 shrink-0 text-accent" /> Pensado para compartir en familia</li>
         </ul>
       </main>
-      <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-line py-6 text-xs text-muted"><span>Un hogar. Un equipo.</span><span>Hecho para lo cotidiano.</span></footer>
     </div>
   </>;
 }

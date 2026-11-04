@@ -18,8 +18,8 @@ export function RegistrationForm() {
     try {
       const result = await registerAction({ success: false, message: "" }, data);
       if (!result.success) { setMessage(result.message); return; }
-      const login = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/household" });
-      if (login?.ok && !login.error) window.location.assign("/household");
+      const login = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/inventory" });
+      if (login?.ok && !login.error) window.location.assign("/inventory");
       else setMessage("No pudimos iniciar la sesión automáticamente. Si ya tienes una cuenta, inicia sesión con tu contraseña o recupera tu acceso.");
     } catch {
       setMessage("No pudimos conectar. Intenta de nuevo o inicia sesión si tu cuenta ya se creó.");

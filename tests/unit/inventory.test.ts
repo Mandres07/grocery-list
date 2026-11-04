@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { wholeNumber, optionalQuantity, inventoryName, inventoryRequestId } from "@/lib/inventory/validation";
-import { categoryLabels, descendantCategoryIds } from "@/lib/inventory/categories";
+import { categoryLabels, descendantCategoryIds, filterCategories } from "@/lib/inventory/categories";
 
 describe("inventory inputs and category navigation", () => {
   it("accepts zero and safe whole quantities, with optional thresholds", () => {
@@ -23,5 +23,28 @@ describe("inventory inputs and category navigation", () => {
     expect(categoryLabels(categories).find((item) => item.id === "c")!.label).toBe("Alimentos / Despensa / Arroz");
     expect(descendantCategoryIds(categories, "a")).toEqual(["a", "b", "c"]);
     expect(categoryLabels([{ id: "a", name: "A", parentId: "b" }, { id: "b", name: "B", parentId: "a" }])).toHaveLength(2);
+  });
+});
+
+
+describe("category list filtering", () => {
+  const categories = [
+    { id: "a", name: "Alimentos", parentId: null },
+    { id: "b", name: "Despensa", parentId: "a" },
+    { id: "c", name: "Cereales", parentId: "b" },
+    { id: "d", name: "Limpieza", parentId: null },
+  ];
+  it("searches names and parent paths without case sensitivity", () => {
+    expect(filterCategories(categories, "  DESPENSA ").map((category) => category.id)).toEqual(["b", "c"]);
+  });
+  it("filters principal categories or direct children and combines search", () => {
+    expect(filterCategories(categories, "", "root").map((category) => category.id)).toEqual(["a", "d"]);
+    expect(filterCategories(categories, "", "a").map((category) => category.id)).toEqual(["b"]);
+    expect(filterCategories(categories, "Cereales", "b").map((category) => category.id)).toEqual(["c"]);
+  });
+  it("returns an empty view for unmatched filters without modifying the source", () => {
+    expect(filterCategories(categories, "missing")).toEqual([]);
+    expect(filterCategories(categories, "Limpieza", "a")).toEqual([]);
+    expect(categories).toHaveLength(4);
   });
 });

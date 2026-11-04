@@ -8,7 +8,7 @@ Keep the warm background, green brand foundation, terracotta accents, and serif 
 - Preserve touch targets of at least the shared `touch` size (44px), visible focus, native labels, and live feedback. Empty feedback must not reserve visible space.
 - Use divided rows for repeated records and separators for related sections. Reserve outlined or raised surfaces for content that needs a distinct boundary.
 - On narrow screens, show the welcome introduction, registration form, then supporting benefits. Keep both welcome and registration columns on desktop.
-- Keep primary search and stock actions visible. Put advanced filters, category management, and recent activity in native disclosures; open advanced filters when a filter is active.
+- Keep primary search and stock actions visible. Use URL-based section navigation for Products, Categories, and Activity; put advanced filters in a compact dropdown and product creation in the shared native modal. Product-detail activity may remain in a disclosure.
 
 Validate desktop and mobile layouts and run `npm run check` after application changes.
 
@@ -21,3 +21,34 @@ Keep `brand`/`brand-hover` green for primary actions, navigation, large headline
 Registration (`/`) and sign-in (`/sign-in`) share the server-rendered `(auth)` route layout: identical welcome copy, supporting benefits, shell, and footer. Routes supply only their form panels; use ordinary Next links to switch forms so URLs and browser history remain native. Keep the shared welcome heading as the single h1 and form titles as h2. Keep supporting benefits below the form on mobile.
 
 Stock controls show confirmed server quantities and revisions. Reconcile action responses and refreshed page data by revision so delayed responses cannot replace newer stock, and retain the same request ID for uncertain retries. The persistent header may fall back to guest navigation if account lookup fails; page authorization must still fail closed and render its error screen. Preserve Next.js control-flow exceptions when handling that lookup failure.
+
+Use `InventoryShell` for inventory section headings and navigation, `Modal` for native dialog behavior, and `ProductCategoryField`/`CategorySelect` for existing or inline category choices. Modal dimensions and backdrop color belong in theme tokens. Uncertain saves must retain request data and block accidental modal dismissal until resolved.
+
+
+Products and Categories must share `InventoryShell`, `ListFilters` and `FormDialog`: header filter/create actions, compact results, and modal search/filtering and creation/editing. Category deletion uses a confirmation dialog. Filters retain their values in URLs. The icon indicates active search/filters; modal forms apply through GET and support clearing, Escape, outside interaction, and focus restoration.
+
+Standalone data-entry forms use the shared `surface-raised` card (background, border, radius, and padding tokens). `AccountForm` applies this for visible fields; `ActionForm` does so for standalone editable content. Use `embedded` only when an existing card or modal already owns the surface. Authentication panels, modals, and invitation workflows use that same surface treatment; command-only row actions remain compact within their owning record or panel. Do not nest a second form card inside a dialog.
+
+Use `table-responsive` for tabular record collections that become compact rows on mobile. Keep native table headers and explicit roles when changing display for narrow screens. `cell-primary`, `cell-description`, and `cell-actions` describe each cell’s role. Routine stock saving/success messages use a screen-reader live region without taking layout space; errors and retry controls remain visible. Use compact rows with shared spacing tokens and keep controls at the minimum touch size. Use `glyph-icon` for icon artwork and `action-icon` for icon-only button targets.
+
+Render `AppFooter` once in the root layout for both authentication and account pages. It reuses brand constants, the shared content width, colors, typography, and link touch targets, with “Hecho en 🇵🇦 por mandres.dev” linking to the creator. Keep the footer at the bottom of short pages through the `viewport-column` layout without fixing it over content.
+
+Use SectionPanel for compact grouped settings: a shared surface, descriptive icon, heading, optional summary, and content. Compose panels with `panel-grid` and semantic `data-pair` definition lists. When the panel owns the surface, pass `embedded` to AccountForm to avoid nested cards. AccountForm fields may supply `defaultValue` for existing profile values.
+
+### Visual language
+
+Use locally bundled Manrope through the shared typography tokens, green primary actions, a soft neutral canvas, white collection/panel surfaces, and restrained terracotta details. All palette, typography, spacing, radii, and elevation values belong in theme.json; the generator exports the shadows group as shadow CSS variables. Load the variable font through next/font/local in the root layout, keeping builds and browser visits independent of external font providers. Use 700 for headings/product names, 600 for controls/navigation, and 400–500 for body text. Email typography uses its own plain family stack with system fallbacks because email clients cannot resolve the app’s CSS variables.
+
+NavigationLink owns route-aware active state in a small client boundary; page/data components stay on the server. Use collection-surface for compact tables and lists, symbol-muted for supporting icons, and label-soft for categories and movement amounts. Quantity controls form one bounded stepper while retaining independent 44px actions. On phones, product names show up to two lines, with full names retained in the accessible link and product details. Category and activity icon actions require specific accessible labels. Secondary and undo actions remain visually quiet; uncertain writes still expose their full retry action.
+
+### Overlay motion
+
+Shared dialogs fade and rise over 220ms, including their backdrop. Disclosure menus fade and slide over 160ms through the reveal-disclosure class. Durations, distances, and easing live in the theme motion group and are generated as motion CSS variables. Native discrete display/overlay/content-visibility transitions allow exit animations while preserving dialog/details behavior; feature guards retain instant native behavior in older browsers. Reduced-motion disables transitions and translation. Closed overlays do not accept pointer interaction. Avoid timer-based visibility state or duplicated animation logic per feature.
+
+Clickable native controls, actionable links, associated labels, and elements with button/link roles use the shared pointer cursor rule. Disabled controls and aria-disabled actions use not-allowed; editable text inputs retain their text cursor. Do not add per-component cursor declarations when native semantics already match these rules.
+
+Menu toggle strokes morph into a cross using the existing disclosure open state. Add-action plus glyphs rotate to the shared cross-angle token while their dialog is open. On mobile, the dialog owns a viewport-fixed floating close control in the same position as the add trigger; the background trigger is suppressed. It shares dismissal guards with the dialog and remains disabled for pending/uncertain writes. Keep translation on modal-content instead of the dialog shell so fixed controls remain anchored to the viewport. Icon transitions honor reduced-motion preferences, and the static menu icon remains available separately.
+
+SectionNavigation is shared by inventory and product pages. It renders semantic navigation links with aria-current; its small client effect reveals the selected link inside an overflowing strip on selection/resize. Data fetching and section panels stay server-rendered. Use measure-form for focused forms, with SectionPanel owning the single surface.
+
+Use shared stockStatus and compareStockProducts helpers for visible buying urgency. ProductTable reconciles confirmed quantities by revision and derives row order and low-stock filter membership from those values; never wait for a refresh alone to update labels. Keep urgency badges as text and use existing accent/warning tokens for narrow record markers. Zero stock is urgent even without a warning threshold; archived records remain neutral.

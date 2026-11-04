@@ -9,13 +9,13 @@ import { acceptInvitationAction, continueInvitationAction } from "../family/acti
 export default async function InvitationPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
   const { token } = await searchParams;
   const invitation = await getFamilyInvitation(token);
-  if (!invitation || invitation.status !== "pending" || !validToken(token)) return <>
+  if (!invitation || invitation.status !== "pending" || !validToken(token)) return <section className="surface-raised measure-narrow">
     <h1 className="heading-title">Invitación no disponible</h1>
     <p className="notice mt-5">El enlace puede haber vencido, sido revocado o aceptado. Pide uno nuevo a la persona propietaria del hogar.</p>
     <Link href="/household" className="action-secondary mt-6">Ir a mi hogar</Link>
-  </>;
+  </section>;
   const user = await getCurrentUser();
-  return <>
+  return <section className="surface-raised measure-narrow">
     <h1 className="heading-title">Te invitaron a compartir hogar</h1>
     <p className="mt-4 text-sm leading-6 text-muted">Únete a <strong>{invitation.householdName}</strong> para organizar el hogar en familia. La invitación vence en siete días desde su envío.</p>
     {user && !user.emailVerified ? <>
@@ -34,5 +34,5 @@ export default async function InvitationPage({ searchParams }: { searchParams: P
         <button className="action-primary">{destination === "register" ? "Crear mi cuenta" : "Ya tengo una cuenta"}</button>
       </form>)}</div>
     </>}
-  </>;
+  </section>;
 }

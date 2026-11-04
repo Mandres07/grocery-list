@@ -37,7 +37,7 @@ export async function verifyEmailAction(_state: AccountFormState, data: FormData
   const result = await accountResult(() => verifyAccountEmail(data.get("token")));
   if (result.success) {
     revalidatePath("/", "layout");
-    if ((await getCurrentUser())?.emailVerified) redirect("/household");
+    if ((await getCurrentUser())?.emailVerified) redirect("/inventory");
   }
   return result;
 }
@@ -62,5 +62,5 @@ export async function createHouseholdAction(_state: AccountFormState, data: Form
   const user = await requireVerifiedUser();
   const result = await accountResult(() => createHousehold(user.id, user.sessionVersion, data.get("name")));
   if (!result.success) return result;
-  redirect("/household");
+  redirect("/inventory");
 }

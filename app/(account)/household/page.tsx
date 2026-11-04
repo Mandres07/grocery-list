@@ -1,3 +1,4 @@
+import { SectionPanel } from "@/components/ui/section-panel";
 import { AccountForm } from "@/components/auth/account-form";
 import { requireSignedInUser } from "@/lib/auth/session";
 import { VerificationNotice } from "@/components/auth/verification-notice";
@@ -35,19 +36,29 @@ export default async function HouseholdPage() {
     await requireHouseholdAccess(user.id, membership.householdId.toString());
     household = await Household.findById(membership.householdId).lean();
   }
+  const isOwner = household?.ownerId.toString() === user.id;
   return <>
-    <div className="flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-sm text-muted">Hola, {user.name}</p><h1 className="mt-2 font-display text-3xl sm:text-4xl">{household ? household.name : "Tu hogar empieza aquí"}</h1></div>
+    <div className="section-header">
+      <div><h1 className="heading-title">Mi hogar</h1><p className="mt-1 text-sm text-muted">Hola, {user.name}. Este es tu espacio compartido.</p></div>
+      {household && <Link href="/inventory" className="action-primary">Abrir inventario</Link>}
     </div>
-    {household ? <>
-      <p className="mt-6 rounded-[var(--size-radius-panel)] bg-sage p-4 text-sm leading-6">Tu hogar está guardado. {household.ownerId.toString() === user.id ? "Eres la persona propietaria de este hogar." : "Formas parte de este hogar."}</p>
-      {household.ownerId.toString() === user.id && <Link href="/family" className="action-secondary mt-6">Gestionar mi familia</Link>}
-      <Link href="/inventory" className="action-primary mt-6">Abrir mi inventario</Link>
-      <p className="mt-5 text-sm leading-6 text-muted">Los productos y movimientos del inventario se guardan y comparten con las personas de este hogar. La lista de compras llegará en el siguiente paso.</p>
-    </> : <>
-      <p className="mt-5 text-sm leading-6 text-muted">Crea un hogar para organizarlo en familia. No hemos creado uno automáticamente al registrar tu cuenta.</p>
-      <AccountForm action={createHouseholdAction} submitLabel="Crear mi hogar" fields={[{ name: "name", label: "Nombre del hogar", autoComplete: "off" }]} />
-      <section aria-labelledby="invitation-title" className="notice section-separated"><h2 id="invitation-title" className="font-semibold">¿Te vas a unir al hogar de alguien más?</h2><p className="mt-2 text-sm leading-6 text-muted">Abre el enlace de invitación que recibiste por correo para unirte. Puedes esperar una invitación sin crear un hogar.</p></section>
-    </>}
+    <div className="panel-grid measure-settings mt-5">
+      {household ? <>
+        <SectionPanel title={household.name} description="Un hogar para organizarse juntos." icon="home">
+          <dl><div className="data-pair"><dt>Tu rol</dt><dd>{isOwner ? "Propietario" : "Miembro"}</dd></div><div className="data-pair"><dt>Tu nombre</dt><dd>{user.name}</dd></div></dl>
+          <p className="mt-3 text-sm text-muted">Los productos y cambios de existencias se comparten con las personas de este hogar.</p>
+        </SectionPanel>
+        <SectionPanel title="Compartir en familia" description={isOwner ? "Invita a otras personas y gestiona quién forma parte de tu hogar." : "Ya formas parte de este hogar. La persona propietaria gestiona las invitaciones y los miembros."} icon="users">
+          {isOwner ? <Link href="/family" className="action-secondary">Gestionar mi familia</Link> : <Link href="/inventory" className="action-secondary">Ver productos compartidos</Link>}
+        </SectionPanel>
+      </> : <>
+        <SectionPanel title="Tu hogar empieza aquí" description="Dale un nombre para empezar a organizar tus productos." icon="home">
+          <AccountForm action={createHouseholdAction} embedded submitLabel="Crear mi hogar" fields={[{ name: "name", label: "Nombre del hogar", autoComplete: "off" }]} />
+        </SectionPanel>
+        <SectionPanel title="¿Te vas a unir a otro hogar?" description="No necesitas crear uno nuevo." icon="users">
+          <p className="text-sm leading-6 text-muted">Abre el enlace de invitación que recibiste por correo. Puedes esperar una invitación sin crear un hogar.</p>
+        </SectionPanel>
+      </>}
+    </div>
   </>;
 }

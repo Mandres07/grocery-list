@@ -27,9 +27,17 @@ describe("shared email branding", () => {
     expect(content.html).toContain("&amp;b=&quot;test&quot;");
   });
 
+  it("keeps quoted font names inside a valid email style attribute", () => {
+    const content = buildActionEmail({ subject: "Acceso", title: "Tu cuenta", description: "Confirma tu correo", actionLabel: "Confirmar", url: "https://example.test/verify", expiry: "Un día" });
+    expect(content.html).toMatch(/<body style="[^"<>]*font-family:[^"<>]*sans-serif">/);
+    expect(content.html).toContain("&quot;Segoe UI&quot;");
+  });
+
   it("keeps the generated CSS in sync with the same email theme tokens", () => {
     const css = readFileSync(new URL("../../styles/theme.generated.css", import.meta.url), "utf8");
     for (const [name, value] of Object.entries(theme.colors)) expect(css).toContain(`--${name}: ${value};`);
+    for (const [name, value] of Object.entries(theme.motion)) expect(css).toContain(`--motion-${name}: ${value};`);
+    for (const [name, value] of Object.entries(theme.shadows)) expect(css).toContain(`--shadow-${name}: ${value};`);
     for (const [name, value] of Object.entries(theme.sizes)) expect(css).toContain(`--size-${name}: ${value};`);
   });
 });

@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { SignInForm } from "@/components/auth/sign-in-form";
 import { PasswordField } from "@/components/auth/password-field";
 
+vi.mock("next/font/local", () => ({ default: () => ({ variable: "font-manrope" }) }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/app/(account)/actions", () => ({ registerAction: vi.fn() }));
 vi.mock("next/navigation", () => ({ usePathname: () => "/", unstable_rethrow: vi.fn(), redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); }) }));
@@ -47,8 +48,8 @@ describe("home onboarding", () => {
   it("redirects both verified and unverified signed-in users", async () => {
     for (const emailVerified of [true, false]) {
       vi.mocked(getCurrentUser).mockResolvedValue({ id: "a".repeat(24), name: "Ana", email: "ana@example.test", sessionVersion: 0, emailVerified });
-      await expect(HomePage()).rejects.toThrow("REDIRECT:/household");
-      await expect(SignInPage({ searchParams: Promise.resolve({}) })).rejects.toThrow("REDIRECT:/household");
+      await expect(HomePage()).rejects.toThrow("REDIRECT:/inventory");
+      await expect(SignInPage({ searchParams: Promise.resolve({}) })).rejects.toThrow("REDIRECT:/inventory");
     }
   });
 });

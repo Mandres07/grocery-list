@@ -29,14 +29,13 @@ beforeEach(() => {
 });
 
 describe("stock adjustment feedback", () => {
-  it("returns the authoritative quantity and revision and refreshes the actual page routes", async () => {
+  it("returns the authoritative quantity and revision and refreshes the shared application layout", async () => {
     const data = request();
     const result = await inventoryAction({ success: false, message: "" }, data);
     expect(result).toMatchObject({ success: true, stock: { quantity: 11, revision: 2 } });
     expect(adjustStock).toHaveBeenCalledWith(actor, data.get("householdId"), "retained-request", data.get("productId"), 1);
     expect(getInventoryProduct).toHaveBeenCalledWith(actor, data.get("householdId"), data.get("productId"));
-    expect(revalidatePath).toHaveBeenCalledWith("/(account)/inventory", "page");
-    expect(revalidatePath).toHaveBeenCalledWith("/(account)/inventory/[productId]", "page");
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
   });
 
   it("rejects invalid deltas before changing or reading stock", async () => {

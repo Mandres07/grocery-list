@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth/session";
 import { redirect } from "next/navigation";
 
 export default async function SignInPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  if (await getCurrentUser()) redirect("/household");
+  if (await getCurrentUser()) redirect("/inventory");
   const { error } = await searchParams;
   return <section aria-labelledby="sign-in-title" className="surface-raised">
     <h2 id="sign-in-title" className="heading-title">Qué bueno verte</h2>

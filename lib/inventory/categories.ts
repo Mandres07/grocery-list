@@ -29,3 +29,10 @@ export function descendantCategoryIds(categories: InventoryCategory[], id: strin
   }
   return [...selected];
 }
+
+export function filterCategories(categories: InventoryCategory[], query: string, parentId = "") {
+  const search = query.trim().toLocaleLowerCase("es");
+  return categoryLabels(categories).filter((category) =>
+    (!search || category.label.toLocaleLowerCase("es").includes(search)) &&
+    (!parentId || (parentId === "root" ? category.parentId === null : category.parentId === parentId)));
+}

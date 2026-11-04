@@ -16,7 +16,7 @@ function field(data: FormData, name: string) {
 }
 
 function productInput(data: FormData) {
-  return { name: data.get("name"), unit: data.get("unit"), categoryId: data.get("categoryId"), lowStockThreshold: data.get("lowStockThreshold") };
+  return { name: data.get("name"), unit: data.get("unit"), categoryId: data.get("categoryId"), newCategoryName: data.get("newCategoryName"), newCategoryParentId: data.get("newCategoryParentId"), lowStockThreshold: data.get("lowStockThreshold") };
 }
 
 export async function inventoryAction(_state: AccountFormState, data: FormData): Promise<AccountFormState & { stock?: StockSnapshot }> {
@@ -47,9 +47,7 @@ export async function inventoryAction(_state: AccountFormState, data: FormData):
       case "delete-category": await deleteCategory(user, householdId, requestId, field(data, "categoryId")); break;
       default: throw new AccountError("Esta operación no es válida.");
     }
-    revalidatePath("/(account)/inventory", "page");
-    revalidatePath("/(account)/inventory/[productId]", "page");
-    revalidatePath("/household");
+    revalidatePath("/", "layout");
     return { success: true, ...(stock ? { stock } : {}), message: kind === "undo-stock" ? "Movimiento deshecho. Se conservaron los cambios posteriores." : "Cambio guardado y compartido con tu hogar." };
   } catch (error) {
     if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };

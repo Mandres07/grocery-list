@@ -10,9 +10,10 @@ interface Field {
   label: string;
   type?: "text" | "email" | "password";
   autoComplete: string;
+  defaultValue?: string;
 }
 
-export function AccountForm({ action, fields = [], submitLabel, token, passwordHint = false, hiddenFields = {}, repeatable = false }: {
+export function AccountForm({ action, fields = [], submitLabel, token, passwordHint = false, hiddenFields = {}, repeatable = false, embedded = false }: {
   action: AccountFormAction;
   fields?: Field[];
   submitLabel: string;
@@ -20,15 +21,16 @@ export function AccountForm({ action, fields = [], submitLabel, token, passwordH
   passwordHint?: boolean;
   hiddenFields?: Record<string, string>;
   repeatable?: boolean;
+  embedded?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, { message: "", success: false });
   const id = useId();
   return (
-    <form action={formAction} className="stack form-flow" aria-busy={pending}>
+    <form action={formAction} className={`stack form-flow ${fields.length && !embedded ? "surface-raised" : ""}`} aria-busy={pending}>
       {token !== undefined && <input type="hidden" name="token" value={token} />}
       {Object.entries(hiddenFields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
       {fields.map((field) => {
-        const props = { id: `${id}-${field.name}`, name: field.name, label: field.label, autoComplete: field.autoComplete, required: true,
+        const props = { id: `${id}-${field.name}`, name: field.name, label: field.label, defaultValue: field.defaultValue, autoComplete: field.autoComplete, required: true,
           minLength: field.type === "password" ? 12 : undefined, maxLength: field.type === "password" ? 128 : field.type === "email" ? 254 : 100,
           hint: field.name === "password" && passwordHint ? "De 12 a 128 caracteres. Puedes usar una frase que recuerdes." : undefined };
         return field.type === "password" ? <PasswordField key={field.name} {...props} /> : <FormField key={field.name} {...props} type={field.type ?? "text"} />;

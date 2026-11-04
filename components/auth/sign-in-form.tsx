@@ -16,11 +16,11 @@ export function SignInForm() {
     setPending(true);
     setMessage("");
     try {
-      const result = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/household" });
+      const result = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/inventory" });
       if (!result?.ok || result.error) {
         setMessage("No pudimos iniciar sesión. Revisa tus datos o espera unos minutos si ya intentaste varias veces.");
       } else {
-        window.location.assign("/household");
+        window.location.assign("/inventory");
       }
     } catch {
       setMessage("No pudimos conectar. Revisa tu conexión e intenta de nuevo.");

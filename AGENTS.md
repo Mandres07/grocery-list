@@ -29,3 +29,4 @@ Mobile-first household inventory and shared shopping application. Follow the sib
 - Run `npm run check` for application changes.
 - Add meaningful behavioral tests with the account, invitation, permission, and inventory milestones.
 - Review mobile and desktop layouts when browser access is available; state verification limits accurately.
+- Keep the user’s development MongoDB instance and saved data directory in service. If tests need a separate `mongod` process, use a different port and disposable data directory; never replace the app’s instance with an empty test instance.

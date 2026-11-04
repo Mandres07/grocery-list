@@ -37,7 +37,9 @@ mkdir -p .local/mongo
 mongod --dbpath .local/mongo --replSet grocery-rs --bind_ip 127.0.0.1 --port 27018
 ```
 
-Leave that terminal open. In a second terminal, initialize the replica set **once**:
+Leave that terminal open. After restarting your Mac or closing that terminal, run the same `mongod` command again to reopen the existing `.local/mongo` data. Accounts and saved inventory live in that directory; do not switch the app port to an empty data directory.
+
+In a second terminal, initialize the replica set **once**:
 
 ```bash
 mongosh 'mongodb://127.0.0.1:27018/?directConnection=true' --eval 'rs.initiate({_id:"grocery-rs",members:[{_id:0,host:"localhost:27018"}]})'
@@ -94,3 +96,5 @@ Schema declarations alone do not enforce cross-document references or authorizat
 Milestone 2 has been reviewed. Lint, types, 36 unit tests, and the production build pass; the user also confirmed all seven integration tests pass against their running local replica set. Docker startup remains unverified on this machine. Registration has not been started.
 
 Run `npm run check` and then, with MongoDB running, `npm run db:check`. Confirm all pass and send the output if startup or integration checks fail. The UI remains the design preview; the next milestone introduces registration and household creation.
+
+For an isolated test MongoDB process, use a different port (for example 27019), a disposable data directory, and its own replica-set configuration. Keep the app’s existing process on 27018 running. Generated disposable test database names on an already-running replica set remain isolated from `grocery_list`.

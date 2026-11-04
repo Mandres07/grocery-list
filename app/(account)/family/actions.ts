@@ -55,7 +55,7 @@ export async function acceptInvitationAction(_state: AccountFormState, data: For
   const result = await familyResult(() => acceptFamilyInvitation(user, data.get("token")));
   if (!result.success) return result;
   (await cookies()).delete(INVITATION_COOKIE);
-  redirect("/household");
+  redirect("/inventory");
 }
 
 export async function continueInvitationAction(data: FormData) {
