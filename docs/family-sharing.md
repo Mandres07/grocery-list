@@ -1,6 +1,6 @@
 # Compartir el hogar
 
-El hito 4 permite invitar familiares, aceptar invitaciones, reenviarlas, revocarlas y retirar miembros. Solo la persona propietaria puede gestionar el acceso. El inventario guardado llegará en el hito 5; los productos de ejemplo siguen sin formar parte del hogar.
+El hito 4 permite invitar familiares, aceptar invitaciones, reenviarlas, revocarlas y retirar miembros. Solo la persona propietaria puede gestionar el acceso. El inventario guardado ya está disponible en el hito 5; la lista de compras llegará en el hito 6.
 
 ## Revisar con dos cuentas
 
@@ -8,7 +8,7 @@ El hito 4 permite invitar familiares, aceptar invitaciones, reenviarlas, revocar
 2. Con la cuenta propietaria, abre **Gestionar mi familia** desde el hogar. Invita un segundo correo al que tengas acceso.
 3. Comprueba el correo: debe mostrar **Lista de Compras**, la canasta y los colores crema/verde. El dominio sigue siendo `updates.finalscore.win`. No necesitas nuevas credenciales ni configurar Google, Atlas o Vercel.
 4. Abre el enlace en otro perfil/ventana de navegador para conservar la sesión propietaria. Usa el mismo correo que recibió la invitación.
-5. Si es una cuenta nueva, pulsa **Crear mi cuenta**, registra y verifica el correo, después inicia sesión. Si ya existe y está verificada, pulsa **Ya tengo una cuenta**. El mismo navegador conserva la invitación y vuelve a ella después del acceso. Si cambias de navegador/dispositivo al verificar, vuelve a abrir el enlace original de invitación.
+5. Si es una cuenta nueva, pulsa **Crear mi cuenta**, regístrate: entrarás automáticamente a tu cuenta pendiente. Confirma el correo para continuar a la invitación sin volver a iniciar sesión. Si ya existe y está verificada, pulsa **Ya tengo una cuenta**. El mismo navegador conserva la invitación y vuelve a ella después del acceso. Si cambias de navegador/dispositivo al verificar, vuelve a abrir el enlace original de invitación.
 6. Pulsa **Aceptar invitación**. Debes ver el mismo hogar y tu acceso de miembro, sin crear otro hogar. Un correo diferente, una cuenta sin verificar y una cuenta que ya pertenezca a un hogar no pueden aceptar.
 7. Desde la cuenta miembro, abre `/family`: debe explicar que la gestión es exclusiva de la persona propietaria, sin mostrar listas privadas ni controles.
 8. Desde la cuenta propietaria, retira al familiar. En su navegador, actualiza o navega de nuevo: ya no debe acceder al hogar anterior. Su cuenta permanece y puede recibir una nueva invitación.

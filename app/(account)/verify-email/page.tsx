@@ -14,6 +14,6 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
       <p className="mt-2 text-sm leading-6 text-muted">Revisa tu carpeta de correo no deseado. Puedes solicitar otro envío después de un minuto.</p>
       <AccountForm action={resendVerificationAction} submitLabel="Enviar enlace" fields={[{ name: "email", label: "Correo electrónico", type: "email", autoComplete: "email" }]} />
     </section>
-    <Link href="/sign-in" className="mt-6 inline-flex min-h-12 items-center text-sm underline underline-offset-4">Ir a iniciar sesión</Link>
+    <Link href="/household" className="mt-6 inline-flex min-h-12 items-center text-sm underline underline-offset-4">Continuar a mi cuenta</Link>
   </>;
 }

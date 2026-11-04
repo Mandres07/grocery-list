@@ -9,6 +9,10 @@ import { createHousehold } from "@/lib/households/create";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { sendAccountEmail, sendInvitationEmail } from "@/lib/email/account-email";
 import { acceptFamilyInvitation, getFamilyInvitation, inviteFamilyMember, removeFamilyMember, revokeFamilyInvitation, type FamilyActor } from "@/lib/households/family";
+import { createProduct, editProduct, adjustStock, correctStock, setProductArchived, undoStockMovement, saveCategory, deleteCategory } from "@/lib/inventory/mutations";
+import { getInventoryProduct, listInventory, listInventoryActivity } from "@/lib/inventory/queries";
+import InventoryRequest from "@/models/InventoryRequest";
+import { randomUUID } from "node:crypto";
 
 vi.mock("@/lib/email/account-email", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/email/account-email")>(),
@@ -257,7 +261,8 @@ describe("account and household workflows", () => {
     expect(call[0]).toBe(email);
     expect(user!.verificationTokenHash).toBe(tokenHash(verificationToken));
     expect(user!.verificationTokenHash).not.toBe(verificationToken);
-    expect(await authenticateAccount(email, password)).toBeNull();
+    expect(await authenticateAccount(email, password)).toMatchObject({ id: accountId });
+    await expect(createHousehold(accountId, 0, "Unverified home")).rejects.toThrow("Inicia sesión");
   });
 
   it("does not replace credentials on duplicate signup or send again during cooldown", async () => {
@@ -321,7 +326,8 @@ describe("account and household workflows", () => {
 
   it("recovers after a failed email send and invalidates the undelivered token", async () => {
     vi.mocked(sendAccountEmail).mockRejectedValueOnce(new Error("Email unavailable"));
-    await expect(registerAccount("Retry", "retry@example.test", password)).rejects.toThrow("Email unavailable");
+    await expect(registerAccount("Retry", "retry@example.test", password)).resolves.toContain("No pudimos enviar");
+    expect(await authenticateAccount("retry@example.test", password)).not.toBeNull();
     const failedToken = vi.mocked(sendAccountEmail).mock.calls.at(-1)![1];
     await expect(verifyAccountEmail(failedToken)).rejects.toThrow("no es válido");
     await requestAccountEmail("retry@example.test", "verification");
@@ -347,12 +353,27 @@ describe("account and household workflows", () => {
     await expect(verifyAccountEmail(newToken)).resolves.toContain("verificado");
   });
 
-  it("does not insert an account when required email configuration is missing", async () => {
+  it("allows account access without email configuration while withholding household access", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
     try {
-      await expect(registerAccount("No key", "no-key@example.test", password)).rejects.toThrow("configurado");
-      expect(await User.exists({ email: "no-key@example.test" })).toBeNull();
+      await expect(registerAccount("No key", "no-key@example.test", password)).resolves.toContain("No pudimos enviar");
+      const user = await authenticateAccount("no-key@example.test", password);
+      expect(user).not.toBeNull();
+      await expect(createHousehold(user!.id, 0, "Not yet")).rejects.toThrow("Inicia sesión");
     } finally { vi.stubEnv("RESEND_API_KEY", "integration-test-not-a-real-key"); }
+  });
+
+  it("recovers an unverified account without granting verified household access", async () => {
+    const email = "pending-recovery@example.test";
+    await registerAccount("Pending", email, password);
+    await requestAccountEmail(email, "reset");
+    const token = vi.mocked(sendAccountEmail).mock.calls.at(-1)![1];
+    await resetAccountPassword(token, "new pending password");
+    const user = await authenticateAccount(email, "new pending password");
+    expect(user).toMatchObject({ sessionVersion: 1 });
+    expect((await User.findById(user!.id))!.emailVerifiedAt).toBeNull();
+    expect(await authenticateAccount(email, password)).toBeNull();
+    await expect(createHousehold(user!.id, 1, "Not verified yet")).rejects.toThrow("Inicia sesión");
   });
 });
 
@@ -407,5 +428,204 @@ describe("local database verification", () => {
     await expect(requireHouseholdAccess(ownerId.toString(), householdId.toString(), true)).resolves.toMatchObject({ role: "owner" });
     await Membership.deleteOne({ householdId, userId: memberId });
     await expect(requireHouseholdAccess(memberId.toString(), householdId.toString())).rejects.toThrow("No tienes permiso");
+  });
+});
+
+describe("shared inventory workflows", () => {
+  let owner: FamilyActor;
+  let member: FamilyActor;
+  let home: string;
+  let otherHome: string;
+  let outsider: FamilyActor;
+  let productId: string;
+  let sequence = 0;
+  const input = { name: "Arroz", unit: "bolsas", categoryId: null, quantity: "2", lowStockThreshold: "1" };
+
+  async function person() {
+    const user = await User.create({ name: `Inventario ${++sequence}`, email: `inventory-${sequence}@example.test`, emailVerifiedAt: new Date() });
+    return { id: user._id.toString(), sessionVersion: 0 };
+  }
+
+  beforeEach(async () => {
+    owner = await person();
+    member = await person();
+    outsider = await person();
+    home = await createHousehold(owner.id, 0, "Inventario compartido");
+    otherHome = await createHousehold(outsider.id, 0, "Hogar privado");
+    await Membership.create({ householdId: home, userId: member.id });
+    productId = (await createProduct(owner, home, randomUUID(), input)).id;
+  });
+
+  it("saves initial stock with its actor and lets both members read it", async () => {
+    expect(await getInventoryProduct(member, home, productId)).toMatchObject({ name: "Arroz", quantity: 2, lowStockThreshold: 1, revision: 0 });
+    const activity = await listInventoryActivity(owner, home);
+    expect(activity).toHaveLength(1);
+    expect(activity[0]).toMatchObject({ delta: 2, quantityBefore: 0, quantityAfter: 2, reason: "receipt", canUndo: true });
+    expect(activity[0].actorName).toContain("Inventario");
+    await expect(listInventory(outsider, home)).rejects.toThrow("permiso");
+    expect(await getInventoryProduct(outsider, otherHome, productId)).toBeNull();
+  });
+
+  it("deduplicates stock retries and rejects reuse for a different actor or payload", async () => {
+    const requestId = randomUUID();
+    const first = await adjustStock(member, home, requestId, productId, 1);
+    expect(await adjustStock(member, home, requestId, productId, 1)).toEqual(first);
+    expect((await Product.findById(productId))!.quantity).toBe(3);
+    expect(await StockMovement.countDocuments({ householdId: home, requestId })).toBe(1);
+    await expect(adjustStock(member, home, requestId, productId, -1)).rejects.toThrow("otra operación");
+    await expect(adjustStock(owner, home, requestId, productId, 1)).rejects.toThrow("otra operación");
+    expect((await Product.findById(productId))!.quantity).toBe(3);
+  });
+
+  it("deduplicates zero-stock product creation and no-op corrections", async () => {
+    const requestId = randomUUID();
+    const first = await createProduct(owner, home, requestId, { ...input, name: "Jabón", quantity: "0" });
+    expect(await createProduct(owner, home, requestId, { ...input, name: "Jabón", quantity: "0" })).toEqual(first);
+    expect(await Product.countDocuments({ householdId: home, name: "Jabón" })).toBe(1);
+    const correctionId = randomUUID();
+    await correctStock(owner, home, correctionId, first.id, 0, "0");
+    await adjustStock(member, home, randomUUID(), first.id, 1);
+    await correctStock(owner, home, correctionId, first.id, 0, "0");
+    expect((await Product.findById(first.id))!.quantity).toBe(1);
+    expect(await StockMovement.countDocuments({ productId: first.id, reason: "correction" })).toBe(0);
+  });
+
+  it("handles concurrent decrements without negative stock or lost activity", async () => {
+    const outcomes = await Promise.allSettled(Array.from({ length: 5 }, (_, index) => adjustStock(index % 2 ? owner : member, home, randomUUID(), productId, -1)));
+    expect(outcomes.filter((item) => item.status === "fulfilled")).toHaveLength(2);
+    expect((await Product.findById(productId))!.quantity).toBe(0);
+    expect(await StockMovement.countDocuments({ productId, reason: "consumption" })).toBe(2);
+    expect(await InventoryRequest.countDocuments({ householdId: home })).toBe(3);
+  });
+
+  it("applies a concurrently repeated request only once", async () => {
+    const requestId = randomUUID();
+    const results = await Promise.all(Array.from({ length: 4 }, () => adjustStock(member, home, requestId, productId, 1)));
+    expect(new Set(results.map((item) => item.movementId)).size).toBe(1);
+    expect((await Product.findById(productId))!.quantity).toBe(3);
+  });
+
+  it("checks revision on corrections and metadata edits", async () => {
+    await adjustStock(member, home, randomUUID(), productId, 1);
+    await expect(correctStock(owner, home, randomUUID(), productId, 0, "8")).rejects.toThrow("cambiaron");
+    await expect(editProduct(owner, home, randomUUID(), productId, 0, { ...input, name: "Stale name" })).rejects.toThrow("cambió");
+    await correctStock(owner, home, randomUUID(), productId, 1, "8");
+    await editProduct(owner, home, randomUUID(), productId, 2, { ...input, name: "Arroz integral", lowStockThreshold: "3" });
+    expect(await getInventoryProduct(member, home, productId)).toMatchObject({ name: "Arroz integral", quantity: 8, revision: 3, lowStockThreshold: 3 });
+    expect(await StockMovement.countDocuments({ productId, reason: "correction", delta: 5 })).toBe(1);
+  });
+
+  it("rolls back quantity and deduplication when activity insertion fails", async () => {
+    const requestId = randomUUID();
+    const insert = vi.spyOn(StockMovement, "create").mockRejectedValueOnce(new Error("Movement unavailable"));
+    try {
+      await expect(adjustStock(member, home, requestId, productId, 1)).rejects.toThrow("Movement unavailable");
+      expect((await Product.findById(productId))!.quantity).toBe(2);
+      expect(await InventoryRequest.exists({ householdId: home, requestId })).toBeNull();
+    } finally { insert.mockRestore(); }
+    await adjustStock(member, home, requestId, productId, 1);
+    expect((await Product.findById(productId))!.quantity).toBe(3);
+  });
+
+  it("rolls back product creation when its initial activity cannot be saved", async () => {
+    const insert = vi.spyOn(StockMovement, "create").mockRejectedValueOnce(new Error("Movement unavailable"));
+    try {
+      await expect(createProduct(owner, home, randomUUID(), { ...input, name: "Rollback item" })).rejects.toThrow("Movement unavailable");
+      expect(await Product.exists({ householdId: home, name: "Rollback item" })).toBeNull();
+    } finally { insert.mockRestore(); }
+  });
+
+  it("undoes once using a compensating delta while preserving later changes", async () => {
+    const original = await adjustStock(member, home, randomUUID(), productId, 2);
+    await adjustStock(owner, home, randomUUID(), productId, -1);
+    const requestId = randomUUID();
+    const undone = await undoStockMovement(owner, home, requestId, original.movementId!);
+    expect((await Product.findById(productId))!.quantity).toBe(1);
+    expect(await undoStockMovement(owner, home, requestId, original.movementId!)).toEqual(undone);
+    await expect(undoStockMovement(member, home, randomUUID(), original.movementId!)).rejects.toThrow("ya fue deshecho");
+    await expect(undoStockMovement(owner, home, randomUUID(), undone.movementId!)).rejects.toThrow("no se puede deshacer");
+    const activity = await listInventoryActivity(member, home);
+    expect(activity.find((item) => item.id === original.movementId)!.canUndo).toBe(false);
+  });
+
+  it("allows only one concurrent undo and preserves consistent stock and activity", async () => {
+    const original = await adjustStock(member, home, randomUUID(), productId, 1);
+    const outcomes = await Promise.allSettled([
+      undoStockMovement(owner, home, randomUUID(), original.movementId!),
+      undoStockMovement(member, home, randomUUID(), original.movementId!),
+    ]);
+    expect(outcomes.filter((item) => item.status === "fulfilled")).toHaveLength(1);
+    expect((await Product.findById(productId))!.quantity).toBe(2);
+    expect(await StockMovement.countDocuments({ householdId: home, undoOfMovementId: original.movementId })).toBe(1);
+  });
+
+  it("rejects undo that would make stock negative and prevents overflow", async () => {
+    const original = await adjustStock(member, home, randomUUID(), productId, 3);
+    await adjustStock(owner, home, randomUUID(), productId, -5);
+    await expect(undoStockMovement(owner, home, randomUUID(), original.movementId!)).rejects.toThrow("No se puede aplicar");
+    const large = await createProduct(owner, home, randomUUID(), { ...input, name: "Límite", quantity: String(Number.MAX_SAFE_INTEGER) });
+    await expect(adjustStock(member, home, randomUUID(), large.id, 1)).rejects.toThrow("No se puede aplicar");
+    expect((await Product.findById(large.id))!.quantity).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("archives without losing stock/activity and requires restore before adjusting", async () => {
+    await setProductArchived(member, home, randomUUID(), productId, true);
+    expect((await listInventory(owner, home)).products).toHaveLength(0);
+    expect((await listInventory(owner, home, { archived: true })).products[0]).toMatchObject({ quantity: 2 });
+    await expect(adjustStock(member, home, randomUUID(), productId, 1)).rejects.toThrow("No se puede aplicar");
+    expect(await StockMovement.countDocuments({ productId })).toBe(1);
+    await setProductArchived(owner, home, randomUUID(), productId, false);
+    await adjustStock(member, home, randomUUID(), productId, -1);
+    expect((await listInventory(owner, home)).products[0].quantity).toBe(1);
+  });
+
+  it("blocks removed members, unverified accounts, and stale sessions even for retries", async () => {
+    const requestId = randomUUID();
+    await adjustStock(member, home, requestId, productId, 1);
+    await removeFamilyMember(owner, home, member.id);
+    await expect(adjustStock(member, home, requestId, productId, 1)).rejects.toThrow("permiso");
+    await expect(listInventory(member, home)).rejects.toThrow("permiso");
+    await User.updateOne({ _id: owner.id }, { emailVerifiedAt: null });
+    await expect(adjustStock(owner, home, randomUUID(), productId, 1)).rejects.toThrow("verifica");
+    await expect(listInventory(owner, home)).rejects.toThrow("verifica");
+    await User.updateOne({ _id: owner.id }, { emailVerifiedAt: new Date(), sessionVersion: 1 });
+    await expect(adjustStock(owner, home, randomUUID(), productId, 1)).rejects.toThrow("Inicia sesión");
+  });
+
+  it("scopes product, movement and category mutations to the current household", async () => {
+    const category = await saveCategory(outsider, otherHome, randomUUID(), { name: "Privada", parentId: null });
+    await expect(createProduct(member, home, randomUUID(), { ...input, categoryId: category.id })).rejects.toThrow("no pertenece");
+    await expect(adjustStock(outsider, otherHome, randomUUID(), productId, 1)).rejects.toThrow("No se puede aplicar");
+    const original = await StockMovement.findOne({ productId });
+    await expect(undoStockMovement(outsider, otherHome, randomUUID(), original!._id.toString())).rejects.toThrow("no se puede deshacer");
+    await expect(saveCategory(member, home, randomUUID(), { id: category.id, name: "Hijack", parentId: null })).rejects.toThrow("no pertenece");
+    await expect(deleteCategory(member, home, randomUUID(), category.id)).rejects.toThrow("no pertenece");
+  });
+
+  it("creates and renames subcategories, rejects cycles/duplicates, and protects populated categories", async () => {
+    const parent = await saveCategory(owner, home, randomUUID(), { name: "Alimentos", parentId: null });
+    const child = await saveCategory(member, home, randomUUID(), { name: "Despensa", parentId: parent.id });
+    await expect(saveCategory(member, home, randomUUID(), { id: parent.id, name: "Alimentos", parentId: child.id })).rejects.toThrow("ciclo");
+    await expect(saveCategory(owner, home, randomUUID(), { name: "alimentos", parentId: null })).rejects.toThrow("Ya existe");
+    await expect(deleteCategory(member, home, randomUUID(), parent.id)).rejects.toThrow("Mueve primero");
+    await editProduct(owner, home, randomUUID(), productId, 0, { ...input, categoryId: child.id });
+    await saveCategory(member, home, randomUUID(), { id: child.id, name: "Cereales", parentId: parent.id });
+    expect((await listInventory(member, home, { categoryId: parent.id })).products[0].categoryId).toBe(child.id);
+    await setProductArchived(owner, home, randomUUID(), productId, true);
+    await expect(deleteCategory(member, home, randomUUID(), child.id)).rejects.toThrow("archivados");
+    await setProductArchived(owner, home, randomUUID(), productId, false);
+    await editProduct(owner, home, randomUUID(), productId, 3, { ...input, categoryId: null });
+    await deleteCategory(member, home, randomUUID(), child.id);
+    await deleteCategory(owner, home, randomUUID(), parent.id);
+    expect(await Category.countDocuments({ householdId: home })).toBe(0);
+  });
+
+  it("searches literal text, filters low stock, and includes categories without leaking another home", async () => {
+    await createProduct(owner, home, randomUUID(), { ...input, name: "Jabón (manos)", quantity: "0", lowStockThreshold: "0" });
+    await createProduct(outsider, otherHome, randomUUID(), { ...input, name: "Jabón (manos)" });
+    expect((await listInventory(member, home, { query: "(manos)" })).total).toBe(1);
+    expect((await listInventory(member, home, { query: ".*" })).total).toBe(0);
+    expect((await listInventory(member, home, { lowStock: true })).products.map((item) => item.name)).toEqual(["Jabón (manos)"]);
+    await expect(listInventory(member, home, { categoryId: new Types.ObjectId().toString() })).rejects.toThrow("no pertenece");
   });
 });

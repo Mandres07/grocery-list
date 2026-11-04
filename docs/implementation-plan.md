@@ -60,6 +60,12 @@ Review: invite the spouse using a second account; accept the invitation; verify 
 
 ## Milestone 5 — Shared inventory
 
+Status: implemented and approved by the user for local commit. Real-email/device review remains a manual follow-up. Includes saved products/categories/subcategories, search and filters, atomic stock changes, optimistic corrections/edits, archive/restore, activity, compensating undo, retained request deduplication, and refresh/offline states. Stops here before milestone 6.
+
+Also implements the user's onboarding update: immediate sign-in after registration, signed-in access before verification with shared features restricted, root/login redirects, a shared account menu and personal account page, and invitation continuation after verification without another sign-in. The original left welcome column remains; the right column contains registration. The sample inventory panel was removed.
+
+Verification: `npm run check` passes lint, TypeScript, 57 unit tests and production build; `npm run db:check` passes 48 local integration checks. Review steps are in `docs/inventory.md`. Unit checks cover authentication boundaries, landing content/redirects, POST credential forms, input validation and category navigation. Disposable database checks cover concurrent stock/undo, deduplication including zero-change requests, rollback, revision conflicts, archive, isolation and removed members. Browser checks use a separate temporary database and no real email delivery: signup signs in before verification, root redirects, direct inventory is restricted, verification returns to the invitation, acceptance joins the existing household, products persist and share across accounts, and offline retry applies once. Real email/device review remains for the user. No new provider setup is needed.
+
 - Product creation/editing/archiving, categories and optional subcategories, search, and filters.
 - Whole-unit stock adjustment, absolute correction, low-stock thresholds, activity, and safe undo.
 - Atomic nonnegative quantities, idempotent requests, transactional activity, and conflict handling.

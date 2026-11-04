@@ -35,4 +35,8 @@ button, a {
   .form-label { @apply mb-2 block text-sm font-semibold; }
   .page-title { @apply font-display text-3xl sm:text-4xl; }
   .notice { @apply rounded-2xl bg-sage p-4 text-sm leading-6; }
+  .menu-link { @apply flex min-h-12 items-center rounded-xl px-3 text-sm hover:bg-sage; }
+  .section-heading { @apply text-lg font-semibold; }
+  .inventory-card { @apply min-w-0 break-words rounded-2xl border border-line p-5; }
+  .surface-panel { @apply rounded-3xl border border-line bg-surface p-6 sm:p-10; }
 }

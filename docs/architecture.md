@@ -8,7 +8,7 @@ The initial versions match the installed Scorecast stack: Next.js 16.2.9, React 
 
 ## Current checkpoint boundaries
 
-The root page is a Server Component. Only `InventoryPreview` requires client state. Sample quantities stay in memory; no local storage, authentication, or real mutations are wired into the UI. The UI explicitly discloses that the example resets and is not shared.
+The root page is a Server Component with the original welcome column beside a registration form. Signed-in users redirect to their household. Registration authenticates through NextAuth immediately; unverified users can use personal account pages but cannot access household or inventory features. The shared header includes a native disclosure menu with account navigation and sign-out. Sample inventory has been removed. See `accounts.md` and `inventory.md`.
 
 Milestone 2 adds Mongoose models, a lazy cached database connection, current-membership/owner guards, household-scoped product/category reference checks, a category ancestry guard, and isolated local verification tests. The app opens no database connection at module import time. Docker Compose configures a loopback-only single-node replica set at port 27018, separate from Scorecast. Native MongoDB can use the same connection settings; see `local-database.md`.
 
@@ -20,7 +20,7 @@ The integration verification suite always uses the fixed local endpoint and a ge
 
 Milestone 3 implements verified email/password accounts using NextAuth JWT sessions and Node scrypt, following Scorecast's approach. Password resets invalidate previous sessions through a database session version checked on every protected request. Verification/recovery tokens are hashed fields on User and are atomically consumed with explicit expiry. MongoDB-backed attempt budgets are shared between workers. Email delivery uses Resend's REST API with server-side settings and the agreed sending domain; no Scorecast secrets are reused. See `accounts.md`.
 
-Registration does not create a household. Authenticated household creation locks the current user document in a transaction and writes the household and owner membership together. The household page reads current membership and calls the existing access guard. Server Actions perform mutations; only form status and NextAuth browser interactions require client components. Saved inventory remains a later milestone.
+Registration does not create a household. Authenticated household creation locks the current user document in a transaction and writes the household and owner membership together. The household page reads current membership and calls the existing access guard. Server Actions perform mutations; form status, NextAuth browser interactions, stock controls, and refresh behavior use small client components. Saved inventory is implemented in milestone 5.
 
 Users have individual accounts. A household owns its inventory and shopping list, and has one owner plus members. Registration leads to creating a household or accepting an invitation, without silently creating an extra household for an invitee.
 
@@ -54,3 +54,9 @@ Separate local, preview, and production data and credentials. Never reuse Scorec
 Milestone 4 implements seven-day email-bound invitations with hashed single-use tokens, owner-only management, resend/revoke, and member removal. Server Actions obtain current identity; transactions recheck session version, verification, ownership and membership. Household revisions serialize permission changes; user revisions serialize household creation and invitation acceptance, preventing simultaneous membership in multiple households. Removal preserves accounts, inventory, and activity. An HttpOnly context cookie carries invitations through signup/sign-in. See `family-sharing.md`.
 
 `lib/brand.ts` defines the Spanish app name; `Brand` shares the basket and name between headers. `styles/theme.json` provides color, font and size tokens to web and email. `npm run tokens` generates CSS variables, favicon and the inline email PNG from shared basket geometry, using sharp already supplied by Next.js. Dev/build regenerate these artifacts automatically. One action-email template creates HTML and plain text for verification, recovery, and invitations, escaping dynamic content.
+
+## Saved inventory
+
+Milestone 5 uses shared transactional authorization for family and inventory writes. User and household revisions serialize permission changes; product revisions reject stale metadata edits and absolute corrections. Conditional increments enforce nonnegative safe integers, and stock/activity commit together. Undo appends a single compensating movement. `InventoryRequest` stores a request fingerprint and result for durable deduplication, including zero-change operations. Archived products and historic actors remain traceable.
+
+Server pages scope every read to a verified account's current household. Small client boundaries submit forms, adjust units, display offline/retry states and refresh on focus or every 30 visible seconds, pausing while a form is dirty. Mutation retries retain their request identifier and data; no offline writes are queued. See `inventory.md` for review steps and current UI limits.

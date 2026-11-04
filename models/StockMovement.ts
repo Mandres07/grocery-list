@@ -1,5 +1,5 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
-import { objectId, schemaOptions, type Timestamps } from "./shared";
+import { objectId, schemaOptions, wholeQuantity, type Timestamps } from "./shared";
 
 export interface IStockMovement extends Timestamps {
   householdId: Types.ObjectId;
@@ -9,6 +9,8 @@ export interface IStockMovement extends Timestamps {
   reason: "receipt" | "consumption" | "correction" | "undo";
   requestId: string;
   undoOfMovementId: Types.ObjectId | null;
+  quantityBefore: number | null;
+  quantityAfter: number | null;
 }
 
 const schema = new Schema<IStockMovement>({
@@ -19,6 +21,8 @@ const schema = new Schema<IStockMovement>({
   reason: { type: String, required: true, enum: ["receipt", "consumption", "correction", "undo"] },
   requestId: { type: String, required: true, trim: true, maxlength: 128 },
   undoOfMovementId: { type: objectId, ref: "StockMovement", default: null },
+  quantityBefore: { ...wholeQuantity, required: false, default: null, validate: { validator: (value: number | null) => value === null || Number.isSafeInteger(value) } },
+  quantityAfter: { ...wholeQuantity, required: false, default: null, validate: { validator: (value: number | null) => value === null || Number.isSafeInteger(value) } },
 }, schemaOptions);
 
 schema.index({ householdId: 1, requestId: 1 }, { unique: true });

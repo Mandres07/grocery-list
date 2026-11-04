@@ -6,7 +6,7 @@ Mobile-first household inventory and shared shopping application. Follow the sib
 
 - Work one milestone at a time, as tracked in `docs/implementation-plan.md`.
 - Stop after each milestone so the user can test and review. Do not advance until the user asks to continue.
-- Preserve the distinction between sample UI and saved/shared inventory.
+- Keep real inventory saved and household-scoped. Do not mix sample products into account data or restore the removed sample inventory panel.
 - Use the existing checkout, GitHub, Vercel, MongoDB Atlas, and Resend as planned. Do not create separate Sites hosting or copy Scorecast secrets or data.
 
 ## Implementation

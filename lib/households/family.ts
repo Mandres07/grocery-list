@@ -1,4 +1,4 @@
-import mongoose, { type ClientSession } from "mongoose";
+import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 import { connectToDatabase } from "@/lib/db";
 import { AccountError, emailAddress, validToken } from "@/lib/auth/validation";
@@ -9,30 +9,12 @@ import Household from "@/models/Household";
 import Invitation from "@/models/Invitation";
 import Membership from "@/models/Membership";
 import User from "@/models/User";
-import { HouseholdAccessError, requireObjectId } from "./access";
+import { requireObjectId } from "./access";
+import { lockHouseholdAccess, lockVerifiedUser, type HouseholdActor } from "./mutation-access";
 
-export interface FamilyActor { id: string; sessionVersion: number }
+export type FamilyActor = HouseholdActor;
 const invitationLifetime = 7 * 24 * 60 * 60_000;
 const invalidInvitation = "Esta invitación no está disponible. Puede haber vencido, sido revocada o aceptada. Pide un nuevo enlace a la persona propietaria.";
-
-async function lockUser(actor: FamilyActor, session: ClientSession) {
-  const user = await User.findOneAndUpdate({ _id: requireObjectId(actor.id), sessionVersion: actor.sessionVersion, emailVerifiedAt: { $ne: null } }, {
-    $inc: { householdRevision: 1 },
-  }, { session });
-  if (!user) throw new AccountError("Inicia sesión de nuevo para continuar.");
-  return user;
-}
-
-async function lockOwnedHousehold(actor: FamilyActor, householdId: string, session: ClientSession) {
-  const user = await lockUser(actor, session);
-  const household = await Household.findOneAndUpdate({ _id: requireObjectId(householdId), ownerId: user._id }, {
-    $inc: { accessRevision: 1 },
-  }, { session });
-  if (!household || !await Membership.exists({ userId: user._id, householdId: household._id }).session(session)) {
-    throw new HouseholdAccessError();
-  }
-  return { user, household };
-}
 
 export async function inviteFamilyMember(actor: FamilyActor, householdId: string, rawEmail: unknown, invitationId?: string) {
   const email = emailAddress(rawEmail);
@@ -44,7 +26,7 @@ export async function inviteFamilyMember(actor: FamilyActor, householdId: string
   const token = randomBytes(32).toString("hex");
   const hash = tokenHash(token);
   const reservation = await mongoose.connection.transaction(async (session) => {
-    const { user, household } = await lockOwnedHousehold(actor, householdId, session);
+    const { user, household } = await lockHouseholdAccess(actor, householdId, session, true);
     if (user.email === email) throw new AccountError("Ya eres parte de este hogar.");
     const recipient = await User.findOne({ email }).session(session);
     if (recipient && await Membership.exists({ userId: recipient._id, householdId: householdObjectId }).session(session)) {
@@ -88,7 +70,7 @@ export async function revokeFamilyInvitation(actor: FamilyActor, householdId: st
   const invitation = requireObjectId(invitationId);
   await connectToDatabase();
   await mongoose.connection.transaction(async (session) => {
-    const { household } = await lockOwnedHousehold(actor, householdId, session);
+    const { household } = await lockHouseholdAccess(actor, householdId, session, true);
     const result = await Invitation.updateOne({ _id: invitation, householdId: household._id, status: { $in: ["pending", "expired"] } }, { $set: { status: "revoked" } }, { session });
     if (!result.modifiedCount) throw new AccountError("La invitación ya no se puede revocar. Actualiza la página.");
   });
@@ -99,7 +81,7 @@ export async function removeFamilyMember(actor: FamilyActor, householdId: string
   const member = requireObjectId(memberId);
   await connectToDatabase();
   await mongoose.connection.transaction(async (session) => {
-    const { household } = await lockOwnedHousehold(actor, householdId, session);
+    const { household } = await lockHouseholdAccess(actor, householdId, session, true);
     if (household.ownerId.equals(member)) throw new AccountError("No puedes retirar a la persona propietaria del hogar.");
     const result = await Membership.deleteOne({ householdId: household._id, userId: member }, { session });
     if (!result.deletedCount) throw new AccountError("Esta persona ya no pertenece al hogar.");
@@ -124,7 +106,7 @@ export async function acceptFamilyInvitation(actor: FamilyActor, token: unknown)
   if (!validToken(token)) throw new AccountError(invalidInvitation);
   await connectToDatabase();
   await mongoose.connection.transaction(async (session) => {
-    const user = await lockUser(actor, session);
+    const user = await lockVerifiedUser(actor, session);
     const invitation = await Invitation.findOne({ tokenHash: tokenHash(token), status: "pending", expiresAt: { $gt: new Date() } }).session(session);
     if (!invitation) throw new AccountError(invalidInvitation);
     if (invitation.email !== user.email) throw new AccountError("Esta invitación es para otro correo. Inicia sesión con el correo que recibió la invitación.");

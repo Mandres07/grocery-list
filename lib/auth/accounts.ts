@@ -27,7 +27,7 @@ export async function requestAccountEmail(rawEmail: unknown, purpose: "verificat
   const now = new Date();
   const user = await User.findOneAndUpdate({
     email,
-    ...(purpose === "verification" ? { emailVerifiedAt: null } : { emailVerifiedAt: { $ne: null } }),
+    ...(purpose === "verification" ? { emailVerifiedAt: null } : { passwordHash: { $type: "string" } }),
     $or: [{ [sentField]: null }, { [sentField]: { $lte: new Date(now.getTime() - 60_000) } }],
   }, { $set: {
     [hashField]: tokenHash(token),
@@ -52,9 +52,6 @@ export async function registerAccount(rawName: unknown, rawEmail: unknown, rawPa
   const email = emailAddress(rawEmail);
   const password = accountPassword(rawPassword);
   await limitAccountRequest("register", email);
-  // Fail before creating a user if the required email setup is absent.
-  emailConfiguration();
-  applicationUrl();
   await connectToDatabase();
   const passwordHash = await hashPassword(password);
   try {
@@ -63,8 +60,13 @@ export async function registerAccount(rawName: unknown, rawEmail: unknown, rawPa
     if (!(error instanceof Error) || !("code" in error) || error.code !== 11000) throw error;
     // A duplicate signup never changes the existing name or password.
   }
-  await requestAccountEmail(email, "verification", true);
-  return "Revisa tu correo para verificar tu cuenta. Si ya tienes una cuenta, puedes iniciar sesión o recuperar tu contraseña.";
+  try {
+    await requestAccountEmail(email, "verification", true);
+    return "Tu cuenta está lista. Confirma tu correo para compartir el hogar y gestionar el inventario.";
+  } catch {
+    console.error("Registration verification email unavailable");
+    return "Tu cuenta está lista. No pudimos enviar la verificación; podrás solicitar otro enlace desde tu cuenta.";
+  }
 }
 
 export async function verifyAccountEmail(token: unknown) {
@@ -83,7 +85,7 @@ export async function resetAccountPassword(token: unknown, rawPassword: unknown)
   await consumeRateLimit("global:reset-confirm", 100, 60_000);
   const passwordHash = await hashPassword(password);
   const user = await User.findOneAndUpdate({
-    resetTokenHash: tokenHash(token), resetExpiresAt: { $gt: new Date() }, emailVerifiedAt: { $ne: null },
+    resetTokenHash: tokenHash(token), resetExpiresAt: { $gt: new Date() },
   }, {
     $set: { passwordHash, resetTokenHash: null, resetExpiresAt: null },
     $inc: { sessionVersion: 1 },
@@ -105,6 +107,6 @@ export async function authenticateAccount(rawEmail: unknown, rawPassword: unknow
   await limitAccountRequest("sign-in", email);
   const user = await User.findOne({ email }).select("+passwordHash +sessionVersion");
   const matches = await verifyPassword(password, user?.passwordHash || dummyHash);
-  if (!user || !matches || !user.emailVerifiedAt) return null;
+  if (!user || !matches) return null;
   return { id: user._id.toString(), name: user.name, email: user.email, sessionVersion: user.sessionVersion };
 }

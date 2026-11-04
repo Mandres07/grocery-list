@@ -1,6 +1,6 @@
 import { AccountForm } from "@/components/auth/account-form";
-import { SignOutButton } from "@/components/auth/sign-in-form";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { requireSignedInUser } from "@/lib/auth/session";
+import { VerificationNotice } from "@/components/auth/verification-notice";
 import { requireHouseholdAccess } from "@/lib/households/access";
 import Household from "@/models/Household";
 import Membership from "@/models/Membership";
@@ -11,7 +11,17 @@ import { pendingInvitationToken } from "@/lib/households/invitation-context";
 import { getFamilyInvitation } from "@/lib/households/family";
 
 export default async function HouseholdPage() {
-  const user = await requireVerifiedUser();
+  const user = await requireSignedInUser();
+  if (!user.emailVerified) {
+    const token = await pendingInvitationToken();
+    const invitation = token ? await getFamilyInvitation(token) : null;
+    return <>
+      <p className="text-sm text-muted">Hola, {user.name}</p>
+      <h1 className="page-title mt-2">Tu cuenta está lista</h1>
+      {invitation?.status === "pending" && invitation.email === user.email && <p className="notice mt-5">Te espera una invitación a <strong>{invitation.householdName}</strong>. No necesitas crear otro hogar.</p>}
+      <VerificationNotice email={user.email} />
+    </>;
+  }
   const membership = await Membership.findOne({ userId: user.id }).lean();
   if (!membership) {
     const token = await pendingInvitationToken();
@@ -28,12 +38,12 @@ export default async function HouseholdPage() {
   return <>
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><p className="text-sm text-muted">Hola, {user.name}</p><h1 className="mt-2 font-display text-3xl sm:text-4xl">{household ? household.name : "Tu hogar empieza aquí"}</h1></div>
-      <SignOutButton />
     </div>
     {household ? <>
       <p className="mt-6 rounded-2xl bg-sage p-4 text-sm leading-6">Tu hogar está guardado. {household.ownerId.toString() === user.id ? "Eres la persona propietaria de este hogar." : "Formas parte de este hogar."}</p>
       {household.ownerId.toString() === user.id && <Link href="/family" className="button-secondary mt-6">Gestionar mi familia</Link>}
-      <section className="mt-8" aria-labelledby="next-title"><h2 id="next-title" className="text-lg font-semibold">Estamos preparando lo que sigue</h2><p className="mt-3 text-sm leading-6 text-muted">El inventario guardado y la lista compartida llegarán en los siguientes pasos. Los productos de la página de inicio siguen siendo un ejemplo y no pertenecen a tu hogar.</p></section>
+      <Link href="/inventory" className="button-primary mt-6">Abrir mi inventario</Link>
+      <p className="mt-5 text-sm leading-6 text-muted">Los productos y movimientos del inventario se guardan y comparten con las personas de este hogar. La lista de compras llegará en el siguiente paso.</p>
     </> : <>
       <p className="mt-5 text-sm leading-6 text-muted">Crea un hogar para organizarlo en familia. No hemos creado uno automáticamente al registrar tu cuenta.</p>
       <AccountForm action={createHouseholdAction} submitLabel="Crear mi hogar" fields={[{ name: "name", label: "Nombre del hogar", autoComplete: "off" }]} />

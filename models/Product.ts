@@ -9,6 +9,7 @@ export interface IProduct extends Timestamps {
   quantity: number;
   lowStockThreshold: number | null;
   archivedAt: Date | null;
+  revision: number;
 }
 
 const schema = new Schema<IProduct>({
@@ -27,6 +28,7 @@ const schema = new Schema<IProduct>({
     },
   },
   archivedAt: { type: Date, default: null },
+  revision: { ...wholeQuantity, default: 0 },
 }, schemaOptions);
 
 schema.index({ householdId: 1, archivedAt: 1, categoryId: 1, name: 1 });

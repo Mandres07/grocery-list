@@ -16,7 +16,7 @@ export function SignInForm() {
     try {
       const result = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/household" });
       if (!result?.ok || result.error) {
-        setMessage("No pudimos iniciar sesión. Revisa tus datos, verifica tu correo o espera unos minutos si ya intentaste varias veces.");
+        setMessage("No pudimos iniciar sesión. Revisa tus datos o espera unos minutos si ya intentaste varias veces.");
       } else {
         window.location.assign("/household");
       }
@@ -26,7 +26,7 @@ export function SignInForm() {
   }
 
   return (
-    <form onSubmit={submit} className="mt-6 space-y-5" aria-busy={pending}>
+    <form method="post" onSubmit={submit} className="mt-6 space-y-5" aria-busy={pending}>
       <div><label htmlFor="email" className="form-label">Correo electrónico</label><input id="email" name="email" type="email" autoComplete="email" required maxLength={254} className="form-input" /></div>
       <div><label htmlFor="password" className="form-label">Contraseña</label><input id="password" name="password" type="password" autoComplete="current-password" required maxLength={128} className="form-input" /></div>
       <p role="status" className="text-sm leading-6 text-warning">{message}</p>

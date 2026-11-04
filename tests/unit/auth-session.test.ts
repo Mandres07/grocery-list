@@ -9,11 +9,11 @@ vi.mock("@/models/User", () => ({ default: { findById: vi.fn() } }));
 import { getServerSession } from "next-auth";
 import User from "@/models/User";
 import { connectToDatabase } from "@/lib/db";
-import { getVerifiedUser } from "@/lib/auth/session";
+import { getCurrentUser, getVerifiedUser } from "@/lib/auth/session";
 
 const id = new Types.ObjectId();
 function userRecord(record: object | null) {
-  vi.mocked(User.findById).mockReturnValue({ select: () => ({ lean: async () => record }) } as unknown as ReturnType<typeof User.findById>);
+  vi.mocked(User.findById).mockReturnValue({ select: () => ({ lean: async () => record ? { _id: id, name: "Ana", email: "ana@example.test", ...record } : null }) } as unknown as ReturnType<typeof User.findById>);
 }
 
 beforeEach(() => {
@@ -30,7 +30,7 @@ describe("verified session boundary", () => {
   });
 
   it("returns only the authenticated user's public identity", async () => {
-    expect(await getVerifiedUser()).toEqual({ id: id.toString(), name: "Ana", email: "ana@example.test", sessionVersion: 2 });
+    expect(await getVerifiedUser()).toEqual({ id: id.toString(), name: "Ana", email: "ana@example.test", sessionVersion: 2, emailVerified: true });
   });
 
   it("rejects deleted and unverified accounts, and sessions invalidated by reset", async () => {
@@ -43,5 +43,11 @@ describe("verified session boundary", () => {
   it("fails closed when MongoDB is unavailable", async () => {
     vi.mocked(connectToDatabase).mockRejectedValueOnce(new Error("unavailable"));
     await expect(getVerifiedUser()).rejects.toThrow("unavailable");
+  });
+
+  it("keeps an unverified user signed in without granting verified access", async () => {
+    userRecord({ _id: id, name: "Ana", email: "ana@example.test", emailVerifiedAt: null, sessionVersion: 2 });
+    expect(await getCurrentUser()).toMatchObject({ id: id.toString(), emailVerified: false });
+    expect(await getVerifiedUser()).toBeNull();
   });
 });

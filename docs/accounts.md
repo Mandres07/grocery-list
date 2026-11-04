@@ -26,9 +26,9 @@ The sender domain is configuration, not embedded in the email code. To change it
 
 Use [localhost:3001](http://localhost:3001), with your real inbox after configuring Resend:
 
-1. Open **Crear mi cuenta**, enter a name, email, and password of 12–128 characters. Registration sends a verification link but does not sign you in or create a household.
-2. Try signing in before verification; access should be denied. Open the verification email, press **Confirmar mi correo**, then sign in. Confirming a link requires a form submission, so an email scanner visiting the URL does not consume it.
-3. Create a named household. Reload and sign in again to confirm the name persists and you remain its owner. The page explicitly distinguishes this saved household from the sample products on the home page.
+1. Open **Crear mi cuenta**, enter a name, email, and password of 12–128 characters. Registration signs you in immediately and attempts to send a verification link. It does not create a household.
+2. Before verification, your account and sign-out menu are available; shared household and inventory actions must remain blocked. Open the verification email and press **Confirmar mi correo**. An existing session continues to the household/invitation without signing in again. Confirming a link requires a form submission, so an email scanner visiting the URL does not consume it.
+3. Create a named household. Reload and sign in again to confirm the name persists and you remain its owner. Open the saved inventory from the household page. The home page retains its introduction beside registration and contains no sample products.
 4. Sign out and confirm `/household` redirects to sign-in.
 5. Request password recovery. Open the email, enter a new password, and sign in. The old password and existing authenticated sessions must lose access to protected household pages and actions.
 6. Reuse a verification or recovery link; it must fail. Verification expires after 24 hours, recovery after 1 hour. Resending replaces the previous token. Check spam and Resend's delivery logs if an email does not arrive.
@@ -39,11 +39,11 @@ Invitation acceptance is available in milestone 4. A user expecting an invitatio
 ## Security and failure behavior
 
 - NextAuth handles the encrypted session cookie, sign-in/sign-out and CSRF checks. Lista de Compras cookies have separate names to avoid collisions with Scorecast on localhost. Server Actions enforce their normal same-origin checks.
-- Every protected page/action loads the current user and checks email verification and session version in MongoDB. Password reset atomically increments the version. Household access still checks current membership; no role is trusted from a form or JWT.
+- Personal account pages check current identity and session version; shared household and inventory pages/actions additionally require verified email in MongoDB. Password reset atomically increments the version. Household access still checks current membership; no role is trusted from a form or JWT.
 - Tokens are random 32-byte values, stored only as hashes on the user. Redemption checks expiration explicitly and atomically clears the hash. Tokens are consumed only on form submission, never on GET. Account pages suppress referrers.
 - Sign-in, registration and email requests use MongoDB-backed fixed-window rate limits, shared across workers: five attempts per normalized email/operation per 15 minutes plus 100 requests per operation per minute globally. Successful sign-ins also count. Wait for the next window if you exhaust a budget. This is an initial household-scale safeguard; public deployment should review appropriate edge-level abuse controls as well.
 - Email requests have a one-minute cooldown. Unknown, verified, and unverified accounts receive generic eligibility messages. A failed email send invalidates its new token and permits retry. Duplicate registration never overwrites existing credentials.
-- If MongoDB is unavailable, authorization fails closed; the UI offers retry. Missing email configuration prevents registration before user insertion. An account created before a provider failure can request another verification email.
+- If MongoDB is unavailable, authorization fails closed; the UI offers retry. Missing email configuration or provider failure does not block creation or sign-in; the pending account cannot access shared features until verification. It can request another verification email.
 - Creating a household serializes on the current user within a transaction, then inserts both household and owner membership. Concurrent/repeated requests cannot create extra households or leave an owner without membership. Registering alone writes no household.
 
 ## Verification
@@ -51,3 +51,5 @@ Invitation acceptance is available in milestone 4. A user expecting an invitatio
 `npm run check` runs lint, types, unit tests, and build. `npm run db:check` exercises the local replica set in a generated disposable database, including account flows, token expiry/reuse, transaction rollback, concurrency, and rate limits. Integration email delivery is mocked: these checks never contact Resend or send messages.
 
 Before hosted deployment, run `initializeDatabase` from `models/index.ts` against the intended database as documented in the architecture; production disables automatic index creation. Use separate production secrets, an HTTPS `NEXTAUTH_URL`, and a verified sender. Review outstanding dependency audit findings before exposing the app publicly.
+
+See [inventory and simplified onboarding](inventory.md) for the current milestone 5 flow and verification restrictions.

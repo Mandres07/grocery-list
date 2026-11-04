@@ -3,7 +3,11 @@
 import { redirect } from "next/navigation";
 import { registerAccount, requestAccountEmail, resetAccountPassword, verifyAccountEmail } from "@/lib/auth/accounts";
 import { AccountError } from "@/lib/auth/validation";
-import { requireVerifiedUser } from "@/lib/auth/session";
+import { getCurrentUser, requireSignedInUser, requireVerifiedUser } from "@/lib/auth/session";
+import { displayName } from "@/lib/auth/validation";
+import { connectToDatabase } from "@/lib/db";
+import User from "@/models/User";
+import { revalidatePath } from "next/cache";
 import { createHousehold } from "@/lib/households/create";
 import type { AccountFormState } from "@/lib/auth/form-state";
 
@@ -30,7 +34,21 @@ export async function forgotPasswordAction(_state: AccountFormState, data: FormD
 }
 
 export async function verifyEmailAction(_state: AccountFormState, data: FormData) {
-  return accountResult(() => verifyAccountEmail(data.get("token")));
+  const result = await accountResult(() => verifyAccountEmail(data.get("token")));
+  if (result.success && (await getCurrentUser())?.emailVerified) redirect("/household");
+  return result;
+}
+
+export async function updateNameAction(_state: AccountFormState, data: FormData) {
+  const user = await requireSignedInUser();
+  return accountResult(async () => {
+    const name = displayName(data.get("name"));
+    await connectToDatabase();
+    const result = await User.updateOne({ _id: user.id, sessionVersion: user.sessionVersion }, { $set: { name } });
+    if (!result.matchedCount) throw new AccountError("Inicia sesión de nuevo para continuar.");
+    revalidatePath("/", "layout");
+    return "Nombre actualizado.";
+  });
 }
 
 export async function resetPasswordAction(_state: AccountFormState, data: FormData) {

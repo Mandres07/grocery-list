@@ -29,17 +29,19 @@ Lista de Compras is being built to make those everyday questions easier. From pa
 | --- | --- | --- |
 | Organize products and adjust quantities with a tap. | Share shopping needs and record what arrives home. | Use individual accounts with owner-managed invitations. |
 
-> 🚧 **Work in progress.** Accounts, household creation, and owner-managed family invitations are implemented. Account email delivery was confirmed by the user. Family sharing needs user review; saved inventory screens and shared shopping are upcoming milestones.
+> 🚧 **Work in progress.** Accounts, household invitations, and saved shared inventory are implemented. Registration signs you in immediately; verification unlocks shared features. The new onboarding and inventory milestone are approved for local commit; real-email/device review remains a manual follow-up. Shared shopping is next.
 
-## ✨ Try the design preview
+## ✨ Organize your household
 
-- **Warm, mobile-first styling** — cream backgrounds, sage accents, readable typography.
-- **Spanish interface** — friendly copy for everyday household use.
-- **Tap to adjust** — working **+ / −** controls on three sample products.
-- **Low-stock feedback** — labels and summary counts respond to quantity changes.
-- **Accessible foundations** — semantic HTML, visible keyboard focus, and generous touch targets.
+- **A welcoming start** — the original introduction stays on the left, with registration on the right.
+- **Immediate account access** — sign in automatically after registering; verify your email before joining a household or managing shared data.
+- **A shared home** — owner-managed invitations, individual accounts, and current membership checks.
+- **Saved inventory** — products, categories/subcategories, whole-unit quantities, and low-stock thresholds.
+- **Traceable changes** — stock adjustments, counted corrections, activity, safe undo, and archive/restore.
+- **Find what you need** — search, category filters including descendants, and products to replenish.
+- **Consistent Spanish branding** — cream/sage tokens, basket headers, and reusable email templates.
 
-Sample changes stay in memory, reset on reload, and are not shared. The preview runs without a database or account.
+The app now uses real household data. No sample products are added to your account. Updates refresh on focus and periodically; offline writes are not queued.
 
 ## 🚀 Get started
 
@@ -73,9 +75,9 @@ The database uses its own volume and port **27018**. The verification command cr
 
 Follow the [account setup guide](docs/accounts.md) to configure a unique session secret and a dedicated Resend API key. Lista de Compras currently uses the existing `updates.finalscore.win` sending domain, with its own sender name and credentials. No Google, Atlas, or Vercel setup is needed for this local milestone.
 
-Open `/register` to create an account, verify your email, then sign in and create a household at `/household`. Registration does not automatically create a household. The inventory preview remains sample data.
+Register directly at `/`; `/register` is a compatibility redirect. Registration signs you in immediately. Confirm your email to create or join a household at `/household`, then open `/inventory`. The account menu includes profile information and sign-out. Registration never creates an extra household for an invitee.
 
-[`.env.example`](.env.example) documents the local defaults. The preview and local database checks need no provider credentials; account email requires your own Resend key and session secret in ignored `.env.local`. Production credentials belong in hosting settings.
+[`.env.example`](.env.example) documents the local defaults. Local database checks need no provider credentials. Sign-in needs a unique session secret, and verification email needs your own Resend key in ignored `.env.local`. Registration remains usable during email-provider failures, with shared features locked until verification. Production credentials belong in hosting settings.
 
 ## 🛠️ Built with
 
@@ -89,7 +91,7 @@ Open `/register` to create an account, verify your email, then sign in and creat
 | Email | Resend verification, recovery, and invitations | ✅ Account delivery confirmed; new design/invitations need manual review |
 | Hosting | Vercel · MongoDB Atlas | 📋 Upcoming |
 
-Frontend and backend live in **one repository**, following the sibling Scorecast project's architecture. The current preview is deliberately separate from persistent inventory workflows.
+Frontend and backend live in **one repository**, following the sibling Scorecast project's architecture. Household authorization, transactions, and retained request IDs protect persistent inventory changes.
 
 ## 🧭 What's next
 
@@ -101,7 +103,7 @@ We stop after each milestone for testing and review.
 | **02 · Data foundation** | Local database, models, access helpers, and verification | ✅ Completed and reviewed |
 | **03 · Accounts** | Registration, verification, sign-in, recovery, household creation | ✅ Email confirmed; continuation authorized |
 | **04 · Family sharing** | Invitations and owner-only member management | ✅ Implemented; approved for commit |
-| **05 · Inventory** | Products, categories, stock, activity, and undo | 📋 Planned |
+| **05 · Inventory** | Products, categories, stock, activity, and undo | ✅ Implemented; approved for commit |
 | **06 · Grocery list** | Shared shopping and confirmed stock receipt | 📋 Planned |
 | **07 · Hosted database** | Atlas, environment isolation, and recovery | 📋 Planned |
 | **08 · Deployment** | Vercel and production email | 📋 Planned |
@@ -137,7 +139,7 @@ Unit tests run without MongoDB. Integration tests require the local replica set;
 | Location | What you'll find |
 | --- | --- |
 | [`app/`](app/) | Pages, layouts, and future API routes |
-| [`components/`](components/) | Shared interface and inventory preview |
+| [`components/`](components/) | Shared forms, account navigation, inventory, and activity |
 | [`models/`](models/) | Household, identity, inventory, and shopping schemas |
 | [`lib/`](lib/) | Database connection and household/reference guards |
 | [`styles/theme.json`](styles/theme.json) | Shared editable colors, fonts, and sizes for web and email |
@@ -147,6 +149,7 @@ Unit tests run without MongoDB. Integration tests require the local replica set;
 | [Local database](docs/local-database.md) | Startup, verification, and troubleshooting |
 | [Accounts and email](docs/accounts.md) | Resend configuration and account review steps |
 | [Family sharing](docs/family-sharing.md) | Invitations, member management, and review steps |
+| [Inventory and onboarding](docs/inventory.md) | Saved products, stock integrity, simplified access, and review steps |
 
 ## 📄 License
 

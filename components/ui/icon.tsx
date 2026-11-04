@@ -1,9 +1,10 @@
 import type { SVGProps } from "react";
 import basket from "@/styles/basket.json";
 
-export type IconName = "basket" | "home" | "leaf" | "bottle" | "jar" | "check" | "arrow";
+export type IconName = "basket" | "home" | "leaf" | "bottle" | "jar" | "check" | "arrow" | "menu";
 
 const paths: Record<IconName, React.ReactNode> = {
+  menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   basket: <path d={basket.path} />,
   home: <><path d="m3 10 9-7 9 7M5 9v12h14V9M9 21v-8h6v8" /></>,
   leaf: <><path d="M20 4C8 2 2 9 6 16s16 3 14-12ZM5 20 16 9M11 14v-4m0 4h5" /></>,
