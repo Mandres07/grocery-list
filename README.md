@@ -1,69 +1,153 @@
-# GroceryList
+<div align="center">
 
-A mobile-first application for shared household inventory and grocery shopping. Built with Next.js, React, TypeScript, and Tailwind CSS, following the sibling Scorecast application structure.
+# 🧺 GroceryList
 
-## Current checkpoint
+### A little less guessing. A little more home.
 
-Milestone 1: application foundation and design preview. The home page includes three clearly labeled sample products with working quantity controls. Sample changes exist only in memory and reset on reload. Accounts, invitations, shared data, shopping lists, and external hosting are future milestones.
+A mobile-first space for household inventory and grocery shopping.<br />
+Know what you have, see what you need, and take care of home together.
 
-## Run locally
+![Next.js](https://img.shields.io/badge/Next.js-16-253d32?style=flat-square&logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React-19-375e46?style=flat-square&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-375e46?style=flat-square&logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-375e46?style=flat-square&logo=tailwindcss&logoColor=white)
+![Status](https://img.shields.io/badge/Status-In_development-885126?style=flat-square)
 
-Use Node.js 20.9 or newer and npm. A current Node.js LTS release is recommended.
+[The idea](#-a-home-for-your-household-essentials) · [Get started](#-get-started) · [Roadmap](#-whats-next) · [Documentation](#-documentation)
+
+</div>
+
+---
+
+## 🌿 A home for your household essentials
+
+“Do we still have rice?” “How many bottles are left?” “Did someone already buy soap?”
+
+GroceryList is being built to make those everyday questions easier. From pantry staples to cleaning supplies, the goal is one shared place to track what is at home and what needs to go on the shopping list.
+
+| 🥫 Know your stock | 🛒 Shop together | 🏡 Share a household |
+| --- | --- | --- |
+| Organize products and adjust quantities with a tap. | Share shopping needs and record what arrives home. | Use individual accounts with owner-managed invitations. |
+
+> 🚧 **Work in progress.** The visual preview is available, and the local database foundation has passed verification. Registration, invitations, saved inventory screens, and shared shopping are upcoming milestones.
+
+## ✨ Try the design preview
+
+- **Warm, mobile-first styling** — cream backgrounds, sage accents, readable typography.
+- **Spanish interface** — friendly copy for everyday household use.
+- **Tap to adjust** — working **+ / −** controls on three sample products.
+- **Low-stock feedback** — labels and summary counts respond to quantity changes.
+- **Accessible foundations** — semantic HTML, visible keyboard focus, and generous touch targets.
+
+Sample changes stay in memory, reset on reload, and are not shared. The preview runs without a database or account.
+
+## 🚀 Get started
+
+**Requirements:** Node.js **20.19+** and npm. A current Node.js LTS release is recommended.
 
 ```bash
+git clone https://github.com/Mandres07/grocery-list.git
+cd grocery-list
 npm ci
 npm run dev
 ```
 
-Open http://localhost:3001. Port 3001 is intentional so Scorecast can run on port 3000 at the same time. To use a different port: `npx next dev --webpack -p 3002`.
+Open **[localhost:3001](http://localhost:3001)**. Already have the repository? Run the last two commands from your project folder.
 
-No environment variables, database, or external accounts are required for this checkpoint. `.env.example` lists reserved placeholders for subsequent work. Real values belong in ignored `.env.local` and hosting settings.
+Port **3001** allows Scorecast to keep using port 3000. For another port, use `npx next dev --webpack -p 3002`.
 
-## Review this milestone
+### 🍃 Set up the local database
 
-1. Open the home page at phone width (approximately 390px) and at desktop width.
-2. Use “Explorar el ejemplo” to jump to the inventory preview.
-3. Adjust each sample with + and −. Quantity cannot go below zero; low-stock labels and the summary update.
-4. Try keyboard navigation and check the visible focus indicator.
-5. Select “Restablecer ejemplo”, then change a quantity and reload. Both restore the original samples.
-6. Review the Spanish copy, sage/cream colors, readability, and touch target sizes.
-
-## Checks
+With Docker Desktop installed and running:
 
 ```bash
-npm run lint
-npm run typecheck
-npm run build
+npm run db:up
+npm run db:check
 ```
 
-Or run all three with `npm run check`. Functional tests will be added with persistent account and inventory behavior. System fonts are used so builds do not require a font download.
+The database uses its own volume and port **27018**. The verification command creates a temporary local test database, exercises indexes, household boundaries, and transactions, then removes only that temporary database.
 
-## Create the private GitHub repository
+**No Docker?** The [local database guide](docs/local-database.md) includes instructions for the MongoDB installation already present on your Mac.
 
-If no local Git repository exists yet:
+[`.env.example`](.env.example) documents the local defaults. No secrets are required locally. Future production credentials belong in ignored `.env.local` files and hosting settings.
 
-```bash
-git init -b main
-git add .
-git commit -m "Initialize GroceryList foundation and design preview"
-```
+## 🛠️ Built with
 
-On GitHub, create an empty private repository named `grocery-list` under your account. Do not initialize it with a README, license, or .gitignore, because those already live here. Then run:
+| Layer | Technology | Progress |
+| --- | --- | --- |
+| Application | Next.js App Router · React · TypeScript | ✅ Configured |
+| Styling | Tailwind CSS · shared theme tokens | ✅ Configured |
+| Data foundation | MongoDB · Mongoose · eight domain models | ✅ Locally verified |
+| Validation | ESLint · TypeScript · Vitest · production build | ✅ Configured |
+| Authentication | Individual accounts and household memberships | 📋 Upcoming |
+| Email | Resend | 📋 Upcoming |
+| Hosting | Vercel · MongoDB Atlas | 📋 Upcoming |
 
-```bash
-git remote add origin https://github.com/Mandres07/grocery-list.git
-git push -u origin main
-```
+Frontend and backend live in **one repository**, following the sibling Scorecast project's architecture. The current preview is deliberately separate from persistent inventory workflows.
 
-Authenticate through your normal Git credential manager when prompted. Do not paste access tokens into chat or commit them. GitHub CLI is optional; the browser workflow works without it.
+## 🧭 What's next
 
-## Organization and roadmap
+We stop after each milestone for testing and review.
 
-- `app/`: pages, layouts, and future API routes
-- `components/ui/`: shared UI primitives
-- `components/inventory/`: inventory preview and future inventory features
-- `styles/tokens.css`: theme tokens
-- `docs/implementation-plan.md`: milestones, scope, and review checkpoints
-- `docs/architecture.md`: architecture and household access rules
+| Milestone | Focus | Progress |
+| --- | --- | --- |
+| **01 · Foundation** | Project setup, visual direction, sample inventory | ✅ Implemented |
+| **02 · Data foundation** | Local database, models, access helpers, and verification | ✅ Completed and reviewed |
+| **03 · Accounts** | Registration, verification, sign-in, recovery, household creation | ⏳ Next |
+| **04 · Family sharing** | Invitations and owner-only member management | 📋 Planned |
+| **05 · Inventory** | Products, categories, stock, activity, and undo | 📋 Planned |
+| **06 · Grocery list** | Shared shopping and confirmed stock receipt | 📋 Planned |
+| **07 · Hosted database** | Atlas, environment isolation, and recovery | 📋 Planned |
+| **08 · Deployment** | Vercel and production email | 📋 Planned |
+| **09 · Everyday use** | End-to-end review and Home Screen setup | 📋 Planned |
 
-Production targets are GitHub → Vercel, MongoDB Atlas, and Resend. Provisioning happens at the corresponding milestones after local behavior is reviewed.
+### 👨‍👩‍👧‍👦 Sharing, with clear boundaries
+
+Each family member will have their **own account**, sharing one household inventory and grocery list.
+
+- **Everyone in the household:** manage products, categories, stock, and shopping items.
+- **Household owner only:** invite family members, revoke invitations, and remove members.
+- **After removal:** access ends while shared products and activity remain.
+
+Barcode scanning, photos, expiration dates, fractional quantities, and offline updates are reserved for later consideration.
+
+## ✅ Development commands
+
+| Command | Purpose |
+| --- | --- |
+| `npm run dev` | Start the app on port 3001 |
+| `npm run check` | Run lint, types, unit tests, and production build |
+| `npm test` | Run database-independent behavioral tests |
+| `npm run test:watch` | Watch unit tests during development |
+| `npm run db:up` | Start the local Docker replica set and wait for readiness |
+| `npm run db:check` | Verify a running local database with integration tests |
+| `npm run db:down` | Stop Docker services while retaining local data |
+| `npm run start` | Serve a completed production build |
+
+Unit tests run without MongoDB. Integration tests require the local replica set; see the [database guide](docs/local-database.md).
+
+## 📚 Documentation
+
+| Location | What you'll find |
+| --- | --- |
+| [`app/`](app/) | Pages, layouts, and future API routes |
+| [`components/`](components/) | Shared interface and inventory preview |
+| [`models/`](models/) | Household, identity, inventory, and shopping schemas |
+| [`lib/`](lib/) | Database connection and household/reference guards |
+| [`styles/tokens.css`](styles/tokens.css) | Shared theme tokens |
+| [Implementation plan](docs/implementation-plan.md) | Milestones and review checkpoints |
+| [Architecture](docs/architecture.md) | Application design and access rules |
+| [Local database](docs/local-database.md) | Startup, verification, and troubleshooting |
+
+## 📄 License
+
+[MIT](LICENSE) · Mario Andrés Morales
+
+---
+
+<div align="center">
+
+**Un hogar. Un equipo.** 🌿<br />
+Made for the little things that keep a home running.
+
+</div>

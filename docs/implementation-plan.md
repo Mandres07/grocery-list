@@ -6,9 +6,9 @@ Stop after every milestone. Present what changed, verification results, remainin
 
 ## Milestone 1 — Foundation and private repository
 
-Status: application foundation ready for user review. Lint, TypeScript, and production build pass. GitHub repository setup remains pending.
+Status: foundation implemented; the user authorized proceeding to milestone 2. Local Git history and origin/main are now synchronized after merging the remote license commit.
 
-Verification limits: this execution environment rejected `git init` when writing `.git` and rejected local server binds on both 0.0.0.0:3001 and 127.0.0.1:3001 with EPERM. Consequently no local Git commit, remote repository, HTTP check, browser interaction check, or visual QA is claimed. Run the README commands in the user's terminal to review the app and finish repository setup. No provider accounts, database, or hosting resources were created.
+Verification limits: lint, types, and production build passed. The execution environment rejected local server binds on port 3001, so HTTP/browser interaction and visual verification were left to the user. The user completed repository setup from their terminal. No external database or hosting resources were created.
 
 - Next.js, React, TypeScript, Tailwind, ESLint, and reproducible lockfile.
 - Warm cream/sage design tokens, Spanish home page, and clearly labeled interactive inventory sample.
@@ -20,11 +20,13 @@ Review: open localhost:3001, try sample controls and reset, inspect phone/deskto
 
 ## Milestone 2 — Local database and household data foundation
 
+Status: complete and approved for commit. Lint, TypeScript, 36 unit tests, and production build pass. The user ran the local replica-set verification from their terminal and confirmed all seven integration checks passed. This execution environment cannot connect to local MongoDB, so the live integration result is user-confirmed. Docker Compose is provided but its startup path remains unverified on this machine because Docker Desktop is missing. No real application data was seeded or modified.
+
 - Configure MongoDB/Mongoose and a separate Docker replica set, port, and volume.
 - Add User, Household, Membership, Invitation, Category, Product, StockMovement, and ShoppingItem models with validation and indexes.
 - Define owner/member permissions and household scoping; validate database connection and meaningful model invariants.
 
-Review: guided local database startup and safe development-only checks for isolation and indexes. UI testing is limited until registration is implemented.
+Review: completed local database startup and development-only verification of isolation, indexes, transactions, and permissions. Registration and persistent inventory UI remain for subsequent milestones. Stop here until the user authorizes milestone 3.
 
 ## Milestone 3 — Registration and household creation
 

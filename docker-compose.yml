@@ -1,0 +1,21 @@
+name: grocery-list
+
+services:
+  mongo:
+    image: mongo:8.0
+    command: ["mongod", "--replSet", "grocery-rs", "--bind_ip_all", "--port", "27018"]
+    ports:
+      - "127.0.0.1:27018:27018"
+    volumes:
+      - grocery-list-mongo-data:/data/db
+      - ./docker/mongo-healthcheck.js:/opt/grocery/mongo-healthcheck.js:ro
+    healthcheck:
+      test: ["CMD", "mongosh", "--host", "127.0.0.1", "--port", "27018", "--quiet", "--file", "/opt/grocery/mongo-healthcheck.js"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  grocery-list-mongo-data:

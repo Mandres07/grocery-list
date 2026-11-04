@@ -1,0 +1,27 @@
+import { Schema, model, models, type Model, type Types } from "mongoose";
+import { objectId, schemaOptions, wholeQuantity, type Timestamps } from "./shared";
+
+export interface IShoppingItem extends Timestamps {
+  householdId: Types.ObjectId;
+  productId: Types.ObjectId | null;
+  name: string;
+  quantity: number;
+  status: "pending" | "purchased" | "received";
+  addedById: Types.ObjectId;
+  receivedMovementId: Types.ObjectId | null;
+}
+
+const schema = new Schema<IShoppingItem>({
+  householdId: { type: objectId, ref: "Household", required: true },
+  productId: { type: objectId, ref: "Product", default: null },
+  name: { type: String, required: true, trim: true, maxlength: 160 },
+  quantity: { ...wholeQuantity, min: 1, default: 1 },
+  status: { type: String, required: true, enum: ["pending", "purchased", "received"], default: "pending" },
+  addedById: { type: objectId, ref: "User", required: true },
+  receivedMovementId: { type: objectId, ref: "StockMovement", default: null },
+}, schemaOptions);
+
+schema.index({ householdId: 1, status: 1, createdAt: -1 });
+schema.index({ householdId: 1, receivedMovementId: 1 }, { unique: true, partialFilterExpression: { receivedMovementId: { $type: "objectId" } } });
+
+export default (models.ShoppingItem as Model<IShoppingItem> | undefined) ?? model<IShoppingItem>("ShoppingItem", schema);

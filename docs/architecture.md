@@ -6,9 +6,15 @@ One Next.js App Router repository contains the frontend and backend. React and T
 
 The initial versions match the installed Scorecast stack: Next.js 16.2.9, React 19.2.4, Tailwind 4.3.1, and strict TypeScript. Webpack matches Scorecast and avoids introducing a bundler difference at setup. Reassess supported versions before public deployment.
 
-## First checkpoint boundaries
+## Current checkpoint boundaries
 
-The root page is a Server Component. Only `InventoryPreview` requires client state. Sample quantities stay in memory; no local storage, authentication, database connection, or real mutations are present. The UI explicitly discloses that the example resets and is not shared.
+The root page is a Server Component. Only `InventoryPreview` requires client state. Sample quantities stay in memory; no local storage, authentication, or real mutations are wired into the UI. The UI explicitly discloses that the example resets and is not shared.
+
+Milestone 2 adds Mongoose models, a lazy cached database connection, current-membership/owner guards, household-scoped product/category reference checks, a category ancestry guard, and isolated local verification tests. The app opens no database connection at module import time. Docker Compose configures a loopback-only single-node replica set at port 27018, separate from Scorecast. Native MongoDB can use the same connection settings; see `local-database.md`.
+
+Household ownership has a single source of truth: `Household.ownerId`. Every member, including the owner, has a Membership; the role is derived rather than accepted from a client-provided field. Future session-authenticated routes must invoke access guards. Cross-document writes must call reference guards in their transaction; schemas alone do not act as foreign-key or authorization enforcement.
+
+The integration verification suite always uses the fixed local endpoint and a generated disposable database, ignoring application database credentials. Production connection setup requires an explicit URI and database name. Production index provisioning will call the provided `initializeDatabase` helper during deployment/maintenance, not on every request.
 
 ## Planned ownership model
 
