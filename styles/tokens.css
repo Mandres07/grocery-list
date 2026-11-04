@@ -9,7 +9,9 @@
   --color-brand-hover: var(--brand-hover);
   --color-sage: var(--sage);
   --color-line: var(--line);
-  --color-peach: var(--peach);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-warning-soft: var(--warning-soft);
   --color-warning: var(--warning);
   --font-sans: var(--font-family-sans);
   --font-display: var(--font-family-display);

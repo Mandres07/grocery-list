@@ -10,17 +10,17 @@ export default async function InvitationPage({ searchParams }: { searchParams: P
   const { token } = await searchParams;
   const invitation = await getFamilyInvitation(token);
   if (!invitation || invitation.status !== "pending" || !validToken(token)) return <>
-    <h1 className="page-title">Invitación no disponible</h1>
+    <h1 className="heading-title">Invitación no disponible</h1>
     <p className="notice mt-5">El enlace puede haber vencido, sido revocado o aceptado. Pide uno nuevo a la persona propietaria del hogar.</p>
-    <Link href="/household" className="button-secondary mt-6">Ir a mi hogar</Link>
+    <Link href="/household" className="action-secondary mt-6">Ir a mi hogar</Link>
   </>;
   const user = await getCurrentUser();
   return <>
-    <h1 className="page-title">Te invitaron a compartir hogar</h1>
+    <h1 className="heading-title">Te invitaron a compartir hogar</h1>
     <p className="mt-4 text-sm leading-6 text-muted">Únete a <strong>{invitation.householdName}</strong> para organizar el hogar en familia. La invitación vence en siete días desde su envío.</p>
     {user && !user.emailVerified ? <>
       <p className="notice mt-5">Ya iniciaste sesión. Conservaremos esta invitación mientras verificas tu correo.</p>
-      <form action={continueInvitationAction} className="mt-6"><input type="hidden" name="token" value={token} /><input type="hidden" name="destination" value="sign-in" /><button className="button-primary">Continuar y verificar mi correo</button></form>
+      <form action={continueInvitationAction} className="mt-6"><input type="hidden" name="token" value={token} /><input type="hidden" name="destination" value="sign-in" /><button className="action-primary">Continuar y verificar mi correo</button></form>
     </> : user ? user.email === invitation.email ? <>
       <p className="notice mt-5">Aceptarás la invitación con {user.email}.</p>
       <AccountForm action={acceptInvitationAction} token={token} submitLabel="Aceptar invitación" />
@@ -31,7 +31,7 @@ export default async function InvitationPage({ searchParams }: { searchParams: P
       <p className="notice mt-5">Crea tu cuenta o inicia sesión con el mismo correo que recibió esta invitación. Verifica tu correo antes de aceptarla. No necesitas crear otro hogar.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">{["register", "sign-in"].map((destination) => <form key={destination} action={continueInvitationAction}>
         <input type="hidden" name="token" value={token} /><input type="hidden" name="destination" value={destination} />
-        <button className="button-primary">{destination === "register" ? "Crear mi cuenta" : "Ya tengo una cuenta"}</button>
+        <button className="action-primary">{destination === "register" ? "Crear mi cuenta" : "Ya tengo una cuenta"}</button>
       </form>)}</div>
     </>}
   </>;

@@ -10,6 +10,7 @@ describe("shared email branding", () => {
     expect(content.html).toContain('src="cid:brand-basket"');
     expect(content.html).toContain(theme.colors.brand);
     expect(content.html).toContain(theme.colors.background);
+    expect(content.html).toContain(`bgcolor="${theme.colors.brand}"`);
     expect(content.html).toContain("Aceptar invitación");
     expect(content.html).toContain("Si el botón no funciona");
     expect(content.text).toContain("https://example.test/invitation?token=123");

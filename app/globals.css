@@ -1,6 +1,11 @@
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
+html {
+  scrollbar-gutter: stable;
+  scroll-padding-top: var(--size-scroll-clearance);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -16,8 +21,8 @@ button, a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--brand);
-  outline-offset: 4px;
+  outline: var(--size-focus-width) solid var(--focus-color, var(--brand));
+  outline-offset: var(--size-focus-offset);
 }
 
 ::selection {
@@ -26,17 +31,76 @@ button, a {
 }
 
 @layer components {
-  .brand-link { @apply inline-flex items-center gap-3 text-base font-bold tracking-tight sm:text-lg; min-height: var(--size-touch); }
-  .brand-mark { @apply flex shrink-0 items-center justify-center rounded-2xl bg-brand text-surface; width: var(--size-brand-mark); height: var(--size-brand-mark); }
+  .brand-link { @apply inline-flex items-center gap-2 text-sm font-bold sm:text-base tracking-tight; min-height: var(--size-touch); }
+  .brand-mark { @apply flex shrink-0 items-center justify-center bg-brand text-surface; border-radius: var(--size-radius-control); width: var(--size-brand-mark); height: var(--size-brand-mark); }
   .brand-icon { width: var(--size-brand-icon); height: var(--size-brand-icon); }
-  .button-primary { @apply inline-flex w-full items-center justify-center rounded-full bg-brand px-5 py-3 text-sm font-semibold text-surface hover:bg-brand-hover disabled:opacity-60; min-height: var(--size-touch); }
-  .button-secondary { @apply inline-flex items-center justify-center rounded-full border border-line px-5 text-sm font-semibold disabled:opacity-60; min-height: var(--size-touch); }
-  .form-input { @apply w-full rounded-xl border border-line bg-background px-4 text-base; min-height: var(--size-touch); }
-  .form-label { @apply mb-2 block text-sm font-semibold; }
-  .page-title { @apply font-display text-3xl sm:text-4xl; }
-  .notice { @apply rounded-2xl bg-sage p-4 text-sm leading-6; }
-  .menu-link { @apply flex min-h-12 items-center rounded-xl px-3 text-sm hover:bg-sage; }
-  .section-heading { @apply text-lg font-semibold; }
-  .inventory-card { @apply min-w-0 break-words rounded-2xl border border-line p-5; }
-  .surface-panel { @apply rounded-3xl border border-line bg-surface p-6 sm:p-10; }
+  .action-primary, .action-secondary, .action-quiet { @apply inline-flex items-center justify-center gap-2 px-4 text-sm font-semibold disabled:opacity-60; min-height: var(--size-touch); border-radius: var(--size-radius-button); }
+  .action-primary { @apply bg-brand text-surface hover:bg-brand-hover; }
+  .action-secondary { @apply border border-line hover:bg-sage; }
+  .action-link { @apply inline-flex items-center text-sm font-semibold underline underline-offset-4; min-height: var(--size-touch); }
+  .action-icon { min-width: var(--size-touch); padding-inline: var(--size-space-xs); }
+  .disclosure-toggle::-webkit-details-marker { display: none; }
+  .action-inverse { @apply px-3; border-color: color-mix(in srgb, var(--background) 45%, transparent); color: var(--background); }
+  .action-inverse:hover { background: var(--brand-hover); }
+  .surface-inverse { background: var(--brand); color: var(--background); --focus-color: var(--background); }
+  .surface-inverse .brand-mark { background: var(--accent-soft); color: var(--brand); }
+  .action-block { width: 100%; }
+  .action-reveal { @apply shrink-0 border-l border-line text-xs font-semibold text-brand hover:bg-sage; min-height: var(--size-touch); width: var(--size-reveal-width); border-radius: 0 var(--size-radius-control) var(--size-radius-control) 0; }
+  .control { @apply w-full border border-line bg-surface text-base; padding-inline: var(--size-control-padding); min-height: var(--size-touch); border-radius: var(--size-radius-control); }
+  .control-group { @apply flex items-stretch border border-line bg-surface; border-radius: var(--size-radius-control); }
+  .control-group .control { @apply min-w-0 flex-1 border-0 bg-transparent; }
+  .field-label { @apply mb-1 block text-sm font-semibold; }
+  .field-hint { @apply mt-1 text-xs leading-5 text-muted; }
+  .stack { @apply flex flex-col; gap: var(--size-space-sm); }
+  .stack > .action-primary { align-self: flex-start; }
+  .stack > .action-primary.action-block { align-self: stretch; }
+  .stack > fieldset:empty { display: none; }
+  .stack-tight { @apply flex flex-col; gap: var(--size-space-xs); }
+  .form-flow { @apply mt-4; }
+  .feedback { @apply text-sm leading-5; }
+  .feedback:empty { @apply sr-only; }
+  .heading-title { @apply text-2xl font-semibold tracking-tight; }
+  .heading-section { @apply text-base font-semibold; }
+  .heading-display { @apply font-display tracking-tight; font-size: var(--size-text-display); line-height: 1.1; }
+  .notice { @apply bg-sage text-sm leading-6; padding: var(--size-space-sm); border-radius: var(--size-radius-control); }
+  .notice-warning { @apply bg-warning-soft text-warning; }
+  .status-label { @apply inline-flex bg-warning-soft px-2 text-xs font-semibold leading-5 text-warning; border-radius: var(--size-radius-control); }
+  .navigation-link { @apply flex items-center px-3 text-sm hover:bg-sage; min-height: var(--size-touch); border-radius: var(--size-radius-control); }
+  .surface-outlined { @apply min-w-0 break-words border border-line; padding: var(--size-space-sm); border-radius: var(--size-radius-panel); }
+  .surface-raised { @apply min-w-0 border border-line bg-surface; padding: var(--size-panel-padding); border-radius: var(--size-radius-panel); }
+  .popover { max-height: calc(100dvh - var(--size-scroll-clearance)); overflow-y: auto; color: var(--foreground); --focus-color: var(--brand); @apply absolute right-0 z-20 mt-2 w-64 max-w-[80vw] border border-line bg-surface p-3 shadow-lg; border-radius: var(--size-radius-panel); }
+  .measure-narrow { width: 100%; max-width: var(--size-measure-narrow); }
+  .content-region { @apply min-w-0; padding-block: var(--size-space-sm); }
+  .content-shell, .navigation-content { @apply mx-auto; max-width: var(--size-layout-wide); padding-inline: var(--size-layout-gutter); }
+  .content-shell { padding-block: var(--size-space-sm); }
+  .navigation-bar { position: sticky; top: 0; z-index: var(--size-layer-navigation); border-bottom: 1px solid var(--brand-hover); }
+  .navigation-content { @apply flex flex-wrap items-center justify-between gap-3; padding-block: var(--size-space-xs); }
+  .section-separated { @apply border-t border-line; margin-top: var(--size-section-gap); padding-top: var(--size-space-md); }
+  .disclosure { @apply border-b border-line; padding-block: var(--size-space-xs); }
+  .disclosure-trigger { @apply cursor-pointer font-semibold; min-height: var(--size-touch); align-content: center; }
+  .record-list { @apply divide-y divide-line; }
+  .record-row { @apply flex flex-wrap items-center; gap: var(--size-space-sm); padding-block: var(--size-space-sm); }
+  .record-content { @apply min-w-0 break-words; flex: 1 1 8rem; }
+  .record-title { @apply text-sm font-semibold; }
+  .record-description { @apply mt-1 text-xs leading-5 text-muted; }
+  .record-status { @apply mt-1; }
+  .record-actions { @apply max-w-full; flex: 0 1 auto; }
+  .record-actions .form-flow { @apply mt-0; }
+  .quantity-controls { @apply flex flex-wrap items-center; gap: var(--size-space-xs); }
+  .quantity-controls .action-secondary { @apply px-0; min-width: var(--size-touch); }
+  .filter-toolbar { @apply grid items-end gap-3; grid-template-columns: minmax(0, 1fr) auto; margin-top: var(--size-space-md); }
+  .filter-toolbar .disclosure { grid-column: 1 / -1; }
+  .detail-grid { @apply grid gap-3 text-sm sm:grid-cols-3; }
+  .responsive-split { @apply grid items-start; grid-template-areas: 'lead' 'action' 'support'; gap: var(--size-space-md); padding-block: var(--size-space-md); }
+  .responsive-split > .lead-copy { grid-area: lead; }
+  .responsive-split > .surface-raised { grid-area: action; }
+  .responsive-split > .supporting-list { grid-area: support; }
+  .lead-copy { @apply min-w-0; }
+  .supporting-list { @apply space-y-2 text-sm; }
+  .eyebrow { @apply mb-3 inline-flex items-center gap-2 bg-accent-soft px-2 py-1 text-xs font-semibold text-accent; border-radius: var(--size-radius-control); }
+  @media (min-width: 64rem) {
+    .responsive-split { grid-template-columns: 0.9fr 1.1fr; grid-template-areas: 'lead action' 'support action'; grid-template-rows: min-content 1fr; column-gap: var(--size-space-lg); row-gap: var(--size-space-md); padding-block: var(--size-space-lg); }
+    .heading-display { font-size: var(--size-text-display-wide); }
+    .responsive-split > .surface-raised { width: 100%; max-width: var(--size-content); }
+  }
 }

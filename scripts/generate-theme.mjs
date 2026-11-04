@@ -13,7 +13,8 @@ writeFileSync(new URL("../styles/theme.generated.css", import.meta.url), css);
 // Next.js already supplies sharp. Rasterize our existing vector for email
 // clients, which do not reliably display SVG, without remote image hosting.
 const basket = JSON.parse(readFileSync(new URL("../styles/basket.json", import.meta.url), "utf8"));
-const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="8" fill="${theme.colors.brand}"/><path transform="translate(4 4)" d="${basket.path}" fill="none" stroke="${theme.colors.surface}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const markRadius = 32 * parseFloat(theme.sizes["radius-control"]) / parseFloat(theme.sizes["brand-mark"]);
+const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="${markRadius.toFixed(2)}" fill="${theme.colors.brand}"/><path transform="translate(4 4)" d="${basket.path}" fill="none" stroke="${theme.colors.surface}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 const imageSize = parseInt(theme.sizes["brand-mark"]) * 2;
 const image = await sharp(Buffer.from(svg)).resize(imageSize, imageSize).png().toBuffer();
 writeFileSync(new URL("../styles/email-brand.generated.json", import.meta.url), `${JSON.stringify({ base64: image.toString("base64") })}\n`);

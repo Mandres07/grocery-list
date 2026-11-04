@@ -1,20 +1,35 @@
 import Link from "next/link";
 import { Brand } from "./brand";
-import { Icon } from "./icon";
+import { DisclosureMenu } from "./disclosure-menu";
 import { SignOutButton } from "@/components/auth/sign-in-form";
 
+function AccountLinks({ emailVerified, className }: { emailVerified: boolean; className: string }) {
+  return <>
+    <Link href="/household" className={className}>Mi hogar</Link>
+    {emailVerified && <Link href="/inventory" className={className}>Inventario</Link>}
+    <Link href="/account" className={className}>Mi cuenta</Link>
+  </>;
+}
+
 export function AppHeader({ user }: { user: { name: string; emailVerified: boolean } | null }) {
-  return <header className="mb-8 flex flex-wrap items-center justify-between gap-3">
-    <Brand />
-    {user ? <details className="relative">
-      <summary className="button-secondary cursor-pointer list-none gap-2" aria-label="Abrir menú de cuenta"><Icon name="menu" className="size-5" /><span>Menú</span></summary>
-      <nav aria-label="Mi cuenta" className="absolute right-0 z-20 mt-3 w-64 max-w-[80vw] rounded-2xl border border-line bg-surface p-4 shadow-lg">
-        <p className="mb-2 break-words text-sm font-semibold">{user.name}</p>
-        <Link href="/household" className="menu-link">Mi hogar</Link>
-        {user.emailVerified && <Link href="/inventory" className="menu-link">Inventario</Link>}
-        <Link href="/account" className="menu-link">Mi cuenta</Link>
-        <div className="mt-3 border-t border-line pt-3"><SignOutButton /></div>
-      </nav>
-    </details> : <Link href="/sign-in" className="button-secondary">Iniciar sesión</Link>}
+  return <header className="navigation-bar surface-inverse">
+    <div className="navigation-content">
+      <Brand />
+      {user ? <>
+        <nav aria-label="Mi cuenta" className="hidden items-center gap-1 lg:flex">
+          <AccountLinks emailVerified={user.emailVerified} className="action-quiet action-inverse" />
+          <SignOutButton className="action-quiet action-inverse" />
+        </nav>
+        <div className="lg:hidden">
+          <DisclosureMenu label="Menú de cuenta">
+            <nav aria-label="Mi cuenta" className="popover">
+              <p className="mb-2 break-words text-sm font-semibold">{user.name}</p>
+              <AccountLinks emailVerified={user.emailVerified} className="navigation-link" />
+              <div className="mt-3 border-t border-line pt-3"><SignOutButton /></div>
+            </nav>
+          </DisclosureMenu>
+        </div>
+      </> : <Link href="/sign-in" className="action-quiet action-inverse">Iniciar sesión</Link>}
+    </div>
   </header>;
 }

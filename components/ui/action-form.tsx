@@ -41,10 +41,10 @@ export function ActionForm({ action, requestId: initialRequestId, hiddenFields =
       setState({ success: false, message: "No pudimos confirmar el resultado. Reintenta la operación pendiente; conservamos los mismos datos para evitar aplicarla dos veces." });
     } finally { busy.current = false; setPending(false); }
   }
-  return <form method="post" onSubmit={submit} onChange={(event) => { event.currentTarget.dataset.dirty = "true"; }} className="mt-4 space-y-4" aria-busy={pending}>
+  return <form method="post" onSubmit={submit} onChange={(event) => { event.currentTarget.dataset.dirty = "true"; }} className="stack form-flow" aria-busy={pending}>
     {Object.entries(hiddenFields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
-    <fieldset disabled={pending || uncertain} className="space-y-4">{children}</fieldset>
-    <p role="status" className={`text-sm leading-6 ${state.success ? "text-brand" : "text-warning"}`}>{state.message}</p>
-    <button className="button-primary" disabled={pending}>{pending ? "Guardando…" : uncertain ? "Reintentar operación pendiente" : submitLabel}</button>
+    <fieldset disabled={pending || uncertain} className="stack">{children}</fieldset>
+    <p role="status" className={`feedback ${state.success ? "text-brand" : "text-warning"}`}>{state.message}</p>
+    <button className="action-primary" disabled={pending}>{pending ? "Guardando…" : uncertain ? "Reintentar operación pendiente" : submitLabel}</button>
   </form>;
 }

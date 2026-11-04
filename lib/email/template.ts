@@ -30,7 +30,7 @@ export function buildActionEmail({ subject, title, description, actionLabel, url
 <tr><td style="padding:${s['space-md']};background:${c.surface};border:1px solid ${c.line};border-radius:${s['radius-panel']}">
 <h1 style="margin:0 0 ${s['space-md']};font-family:${escapeHtml(theme.fonts.display)};font-size:${s['text-title']};line-height:1.2">${escapeHtml(title)}</h1>
 <p style="font-size:${s['text-body']};line-height:1.7;color:${c.muted}">${escapeHtml(description)}</p>
-<table role="presentation" cellpadding="0" cellspacing="0" style="margin:${s['space-md']} 0"><tr><td bgcolor="${c.brand}" style="border-radius:${s['radius-panel']}"><a href="${link}" style="display:inline-block;padding:${s['space-sm']} ${s['space-md']};font-size:${s['text-body']};font-weight:bold;color:${c.surface};text-decoration:none">${escapeHtml(actionLabel)}</a></td></tr></table>
+<table role="presentation" cellpadding="0" cellspacing="0" style="margin:${s['space-md']} 0"><tr><td bgcolor="${c.brand}" style="border-radius:${s['radius-button']}"><a href="${link}" style="display:inline-block;padding:${s['space-sm']} ${s['space-md']};font-size:${s['text-body']};font-weight:bold;color:${c.surface};text-decoration:none">${escapeHtml(actionLabel)}</a></td></tr></table>
 <p style="font-size:${s['text-small']};line-height:1.6;color:${c.muted}">${escapeHtml(expiry)} Si no esperabas este correo, puedes ignorarlo.</p>
 <p style="font-size:${s['text-small']};line-height:1.6;color:${c.muted}">Si el botón no funciona, copia este enlace:<br><a href="${link}" style="color:${c.brand};overflow-wrap:anywhere;word-break:break-all">${link}</a></p>
 </td></tr><tr><td align="center" style="padding:${s['space-md']};font-size:${s['text-small']};color:${c.muted}">${APP_TAGLINE}</td></tr>

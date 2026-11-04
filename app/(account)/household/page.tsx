@@ -17,7 +17,7 @@ export default async function HouseholdPage() {
     const invitation = token ? await getFamilyInvitation(token) : null;
     return <>
       <p className="text-sm text-muted">Hola, {user.name}</p>
-      <h1 className="page-title mt-2">Tu cuenta está lista</h1>
+      <h1 className="heading-title mt-2">Tu cuenta está lista</h1>
       {invitation?.status === "pending" && invitation.email === user.email && <p className="notice mt-5">Te espera una invitación a <strong>{invitation.householdName}</strong>. No necesitas crear otro hogar.</p>}
       <VerificationNotice email={user.email} />
     </>;
@@ -40,14 +40,14 @@ export default async function HouseholdPage() {
       <div><p className="text-sm text-muted">Hola, {user.name}</p><h1 className="mt-2 font-display text-3xl sm:text-4xl">{household ? household.name : "Tu hogar empieza aquí"}</h1></div>
     </div>
     {household ? <>
-      <p className="mt-6 rounded-2xl bg-sage p-4 text-sm leading-6">Tu hogar está guardado. {household.ownerId.toString() === user.id ? "Eres la persona propietaria de este hogar." : "Formas parte de este hogar."}</p>
-      {household.ownerId.toString() === user.id && <Link href="/family" className="button-secondary mt-6">Gestionar mi familia</Link>}
-      <Link href="/inventory" className="button-primary mt-6">Abrir mi inventario</Link>
+      <p className="mt-6 rounded-[var(--size-radius-panel)] bg-sage p-4 text-sm leading-6">Tu hogar está guardado. {household.ownerId.toString() === user.id ? "Eres la persona propietaria de este hogar." : "Formas parte de este hogar."}</p>
+      {household.ownerId.toString() === user.id && <Link href="/family" className="action-secondary mt-6">Gestionar mi familia</Link>}
+      <Link href="/inventory" className="action-primary mt-6">Abrir mi inventario</Link>
       <p className="mt-5 text-sm leading-6 text-muted">Los productos y movimientos del inventario se guardan y comparten con las personas de este hogar. La lista de compras llegará en el siguiente paso.</p>
     </> : <>
       <p className="mt-5 text-sm leading-6 text-muted">Crea un hogar para organizarlo en familia. No hemos creado uno automáticamente al registrar tu cuenta.</p>
       <AccountForm action={createHouseholdAction} submitLabel="Crear mi hogar" fields={[{ name: "name", label: "Nombre del hogar", autoComplete: "off" }]} />
-      <section aria-labelledby="invitation-title" className="mt-8 rounded-2xl bg-sage p-5"><h2 id="invitation-title" className="font-semibold">¿Te vas a unir al hogar de alguien más?</h2><p className="mt-2 text-sm leading-6 text-muted">Abre el enlace de invitación que recibiste por correo para unirte. Puedes esperar una invitación sin crear un hogar.</p></section>
+      <section aria-labelledby="invitation-title" className="notice section-separated"><h2 id="invitation-title" className="font-semibold">¿Te vas a unir al hogar de alguien más?</h2><p className="mt-2 text-sm leading-6 text-muted">Abre el enlace de invitación que recibiste por correo para unirte. Puedes esperar una invitación sin crear un hogar.</p></section>
     </>}
   </>;
 }

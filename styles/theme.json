@@ -8,25 +8,43 @@
     "brand-hover": "#274932",
     "sage": "#e9eee3",
     "line": "#e1e5dc",
-    "peach": "#f7e9da",
-    "warning": "#885126"
+    "warning": "#885126",
+    "accent-soft": "#f7e9da",
+    "accent": "#a14e36",
+    "warning-soft": "#fff0d4"
   },
   "fonts": {
     "sans": "Arial, Helvetica, sans-serif",
     "display": "Georgia, \"Times New Roman\", serif"
   },
   "sizes": {
-    "touch": "48px",
-    "brand-mark": "44px",
-    "brand-icon": "24px",
+    "touch": "44px",
+    "brand-mark": "36px",
+    "brand-icon": "20px",
     "content": "640px",
     "space-sm": "12px",
-    "space-md": "24px",
-    "space-lg": "40px",
-    "radius-control": "12px",
-    "radius-panel": "24px",
+    "space-md": "20px",
+    "space-lg": "32px",
+    "radius-control": "6px",
+    "radius-panel": "10px",
     "text-small": "14px",
     "text-body": "16px",
-    "text-title": "32px"
+    "text-title": "28px",
+    "space-2xs": "4px",
+    "space-xs": "8px",
+    "radius-button": "6px",
+    "text-display": "36px",
+    "text-display-wide": "56px",
+    "panel-padding": "20px",
+    "control-padding": "12px",
+    "reveal-width": "72px",
+    "layout-gutter": "16px",
+    "section-gap": "24px",
+    "focus-width": "3px",
+    "focus-offset": "3px",
+    "measure-narrow": "480px",
+    "layout-wide": "72rem",
+    "layer-navigation": "40",
+    "scroll-clearance": "88px"
   }
 }

@@ -6,7 +6,7 @@ export function CategorySelect({ categories, name = "categoryId", label = "Categ
   categories: InventoryCategory[]; name?: string; label?: string; defaultValue?: string; excludeId?: string;
 }) {
   const id = useId();
-  return <div><label htmlFor={id} className="form-label">{label}</label><select id={id} name={name} defaultValue={defaultValue} className="form-input">
+  return <div><label htmlFor={id} className="field-label">{label}</label><select id={id} name={name} defaultValue={defaultValue} className="control">
     <option value="">Sin categoría</option>
     {categoryLabels(categories).filter((item) => item.id !== excludeId).map((category) => <option key={category.id} value={category.id}>{category.label}</option>)}
   </select></div>;

@@ -30,7 +30,7 @@ export function RefreshInventory() {
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [router]);
-  return <p role="status" className={`mt-4 text-xs leading-5 ${online ? "text-muted" : "text-warning"}`}>
-    {!online ? "Sin conexión. Los cambios no se guardan sin conexión; espera a recuperar internet y reintenta las operaciones pendientes." : "Se actualiza al volver y cada 30 segundos mientras está visible. La actualización automática se pausa mientras editas un formulario."}
+  return <p role="status" className={`mt-2 text-xs leading-5 ${online ? "text-muted" : "text-warning"}`}>
+    {!online ? "Sin conexión. Los cambios no se guardan sin conexión; espera a recuperar internet y reintenta las operaciones pendientes." : "Se actualiza automáticamente al volver a esta pantalla."}
   </p>;
 }

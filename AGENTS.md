@@ -16,6 +16,7 @@ Mobile-first household inventory and shared shopping application. Follow the sib
 - Keep route files focused; share feature code in `components/` and `lib/`.
 - Use Tailwind utilities and `styles/tokens.css`; build mobile-first with accessible native elements, visible focus, and usable touch targets.
 - Reuse components and shared styles instead of duplicating markup or hardcoding visual values. Define colors, typography, and reusable sizes in `styles/theme.json`; run `npm run tokens` after edits. Do not edit generated theme/icon outputs directly.
+- Name shared CSS classes by descriptive appearance, role, or behavior (for example `surface-outlined`, `record-row`, `stack`, and `action-primary`), not a page name or screen position. Keep controls compact without shrinking touch targets below the shared token.
 - Keep the visible app name in `lib/brand.ts`, reuse the `Brand` header component with its basket, and use the shared branded action-email template for transactional emails.
 - Default user-facing copy to Spanish and internal names to English.
 - Use semantic HTML and handle loading, empty, error, and success states for real workflows.

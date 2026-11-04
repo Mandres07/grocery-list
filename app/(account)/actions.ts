@@ -35,7 +35,10 @@ export async function forgotPasswordAction(_state: AccountFormState, data: FormD
 
 export async function verifyEmailAction(_state: AccountFormState, data: FormData) {
   const result = await accountResult(() => verifyAccountEmail(data.get("token")));
-  if (result.success && (await getCurrentUser())?.emailVerified) redirect("/household");
+  if (result.success) {
+    revalidatePath("/", "layout");
+    if ((await getCurrentUser())?.emailVerified) redirect("/household");
+  }
   return result;
 }
 

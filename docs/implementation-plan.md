@@ -73,6 +73,18 @@ Verification: `npm run check` passes lint, TypeScript, 57 unit tests and product
 
 Review: manage real development products from two accounts/devices; test concurrent updates and low-stock behavior.
 
+## Post-milestone 5 — UI and navigation refinement
+
+Status: complete and authorized for local commit. Keeps milestone 6 pending.
+
+- Compact shared controls, gently squared surfaces, divided inventory/member rows, and secondary sections in disclosures.
+- One persistent green header with inline desktop links, a dismissible mobile menu, and page content aligned to the same width and gutters.
+- Shared two-column registration/sign-in route layout with native URLs and browser history, reusable password visibility controls, and supporting benefits below mobile forms.
+- Green primary actions and major elements, restrained terracotta details, shared web/email tokens, and readable status labels.
+- Confirmed stock quantities include server revisions so stale responses and retries cannot overwrite newer counts; a header account lookup failure leaves page error screens renderable without weakening page authorization.
+
+Verification: `npm run check` passes lint, TypeScript, 82 unit tests, and the production build. `npm run db:check` passes all 48 integration checks against an isolated temporary local replica set. Browser review covered mobile/desktop layouts, shared welcome/header persistence, Back/Forward, direct auth URLs, sign-in success/failure, account redirects, header/page alignment, mobile menu dismissal, touch targets, and green action/hover colors. Final stock checks confirmed a concurrent change from 3 to 10 followed by +1 displays 11, and a saved adjustment with a lost response retries once and remains at 12 after reload. All browser household data was disposable and outbound email was disabled. Real-device and recipient email-client review remain manual follow-ups.
+
 ## Milestone 6 — Shared grocery list
 
 - Product-linked and custom shopping items, quantities, and purchased state.

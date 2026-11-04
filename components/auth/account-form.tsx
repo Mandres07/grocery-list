@@ -1,5 +1,7 @@
 "use client";
 
+import { PasswordField } from "./password-field";
+import { FormField } from "@/components/ui/form-field";
 import { useActionState, useId } from "react";
 import type { AccountFormAction } from "@/lib/auth/form-state";
 
@@ -22,22 +24,17 @@ export function AccountForm({ action, fields = [], submitLabel, token, passwordH
   const [state, formAction, pending] = useActionState(action, { message: "", success: false });
   const id = useId();
   return (
-    <form action={formAction} className="mt-6 space-y-5" aria-busy={pending}>
+    <form action={formAction} className="stack form-flow" aria-busy={pending}>
       {token !== undefined && <input type="hidden" name="token" value={token} />}
       {Object.entries(hiddenFields).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
-      {fields.map((field) => (
-        <div key={field.name}>
-          <label htmlFor={`${id}-${field.name}`} className="form-label">{field.label}</label>
-          <input id={`${id}-${field.name}`} name={field.name} type={field.type ?? "text"} autoComplete={field.autoComplete}
-            required minLength={field.type === "password" ? 12 : undefined}
-            maxLength={field.type === "password" ? 128 : field.type === "email" ? 254 : 100}
-            aria-describedby={field.name === "password" && passwordHint ? `${id}-password-hint` : undefined}
-            className="form-input" />
-          {field.name === "password" && passwordHint && <p id={`${id}-password-hint`} className="mt-2 text-xs leading-5 text-muted">De 12 a 128 caracteres. Puedes usar una frase que recuerdes.</p>}
-        </div>
-      ))}
-      <p role="status" aria-live="polite" className={`text-sm leading-6 ${state.success ? "text-brand" : "text-warning"}`}>{state.message}</p>
-      <button type="submit" disabled={pending || (state.success && !repeatable)} className="button-primary">
+      {fields.map((field) => {
+        const props = { id: `${id}-${field.name}`, name: field.name, label: field.label, autoComplete: field.autoComplete, required: true,
+          minLength: field.type === "password" ? 12 : undefined, maxLength: field.type === "password" ? 128 : field.type === "email" ? 254 : 100,
+          hint: field.name === "password" && passwordHint ? "De 12 a 128 caracteres. Puedes usar una frase que recuerdes." : undefined };
+        return field.type === "password" ? <PasswordField key={field.name} {...props} /> : <FormField key={field.name} {...props} type={field.type ?? "text"} />;
+      })}
+      <p role="status" aria-live="polite" className={`feedback ${state.success ? "text-brand" : "text-warning"}`}>{state.message}</p>
+      <button type="submit" disabled={pending || (state.success && !repeatable)} className="action-primary">
         {pending ? "Un momento…" : state.success && !repeatable ? "Listo" : submitLabel}
       </button>
     </form>
