@@ -1,6 +1,6 @@
 # Lista de compras compartida
 
-Milestone 6 adds `/shopping`, available as **Compras** in the shared account navigation. Accounts must be verified and belong to the household. No new external provider, sending domain, or hosting configuration is needed. Restart the development server after pulling this milestone so Mongoose loads the updated ShoppingItem schema.
+The shared list lives at `/shopping`, available as **Compras** in the shared account navigation. Accounts must be verified and belong to the household. No new external provider, sending domain, or hosting configuration is needed. When changing Mongoose schemas during local development, restart the development server. Production shopping is deployed; accounts/data remain separate from local development.
 
 ## Everyday flow
 
@@ -28,4 +28,4 @@ A receipt can later be undone through normal inventory activity. The received sh
 
 `npm run check` covers lint, TypeScript, unit tests, and the production build. `npm run db:check` uses a generated disposable database on the existing local replica, with email mocked. Shopping tests cover buying vs receiving, inline quantity purchase updates, whole-purchase receipt snapshots, replay protection, concurrent receivers, repeated/manual bulk additions, custom items, stale changes, removed members, session verification, household isolation, unit changes, overflow/archived rollback, literal searching, and inventory lookup beyond the initial 100 choices.
 
-Browser review uses a separate MongoDB process on port 27019 and disposable household accounts with email disabled. Checks cover two-account receipt/history, adding/editing/removing, custom receipts, modal search, mobile/desktop layouts, inline number fields, and interrupted purchase/receipt responses that retry with the same request. The user's saved database on port 27018 is kept running. Real household use on both phones remains the user's milestone review.
+Browser review uses a separate MongoDB process on port 27019 and disposable household accounts with email disabled. Checks cover two-account receipt/history, adding/editing/removing, custom receipts, modal search, mobile/desktop layouts, inline number fields, and interrupted purchase/receipt responses that retry with the same request. The user's saved database on port 27018 is kept running. The user confirmed production shared use during deployment; exhaustive real-device shopping/retry review remains part of the upcoming release milestone.

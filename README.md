@@ -2,164 +2,142 @@
 
 # 🧺 Lista de Compras
 
-### A little less guessing. A little more home.
+### Un hogar. Un equipo.
 
-A mobile-first space for household inventory and grocery shopping.<br />
-Know what you have, see what you need, and take care of home together.
+A mobile-first app for shared household inventory and grocery shopping.<br />
+Know what you have, see what you need, and record what arrives home.
 
 ![Next.js](https://img.shields.io/badge/Next.js-16-253d32?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React](https://img.shields.io/badge/React-19-375e46?style=flat-square&logo=react&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-375e46?style=flat-square&logo=typescript&logoColor=white)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-375e46?style=flat-square&logo=tailwindcss&logoColor=white)
-![Status](https://img.shields.io/badge/Status-In_development-885126?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Deployed-375e46?style=flat-square)
 
-[The idea](#-a-home-for-your-household-essentials) · [Get started](#-get-started) · [Roadmap](#-whats-next) · [Documentation](#-documentation)
+[Open the app](https://lista-de-compras-beta-eight.vercel.app) · [Get started](#-get-started) · [Roadmap](#-roadmap) · [Documentation](#-documentation)
 
 </div>
 
 ---
 
-## 🌿 A home for your household essentials
+## 🌿 Organize your household
 
-“Do we still have rice?” “How many bottles are left?” “Did someone already buy soap?”
+- **Individual accounts:** registration signs you in immediately; email verification unlocks shared features. Password recovery invalidates old sessions.
+- **A shared home:** owner-managed invitations and membership checks protect household data.
+- **Inventory first:** `/inventory` is the signed-in landing page, with products, categories/subcategories, search, and filters in shared dialogs.
+- **Buying priorities:** empty products appear first, followed by those at their warning threshold. Quantities and badges update immediately; rows wait 1.5 seconds after adjustments settle before reordering or leaving a filtered list.
+- **Traceable stock:** whole-unit adjustments, counted corrections, activity filters, safe undo, and archive/restore.
+- **Shared shopping:** `/shopping` has Pendientes, Comprados, and Recibidos. Edit quantities inline and check items as purchased; one receipt confirmation updates linked stock atomically. Purchase checks alone never change inventory.
+- **Consistent Spanish UI:** locally bundled Manrope, green primary actions, restrained terracotta accents, compact rows, and shared web/email branding.
 
-Lista de Compras is being built to make those everyday questions easier. From pantry staples to cleaning supplies, the goal is one shared place to track what is at home and what needs to go on the shopping list.
+Real inventory stays household-scoped; no sample products are added to accounts. Updates refresh on focus and periodically while visible, pausing for dirty/pending/uncertain forms. Offline writes are not queued.
 
-| 🥫 Know your stock | 🛒 Shop together | 🏡 Share a household |
-| --- | --- | --- |
-| Organize products and adjust quantities with a tap. | Share shopping needs and record what arrives home. | Use individual accounts with owner-managed invitations. |
-
-> 🚧 **Work in progress.** Accounts, household invitations, and saved shared inventory are implemented. Registration signs you in immediately; verification unlocks shared features. The new onboarding and inventory milestone are approved for local commit; real-email/device review remains a manual follow-up. Shared shopping is next.
-
-## ✨ Organize your household
-
-- **A welcoming start** — the original introduction stays on the left, with registration on the right.
-- **Immediate account access** — sign in automatically after registering; verify your email before joining a household or managing shared data.
-- **A shared home** — owner-managed invitations, individual accounts, and current membership checks.
-- **Saved inventory** — products, categories/subcategories, whole-unit quantities, and low-stock thresholds.
-- **Traceable changes** — stock adjustments, counted corrections, activity, safe undo, and archive/restore.
-- **Find what you need** — search, category filters including descendants, and products to replenish.
-- **Consistent Spanish branding** — cream/sage tokens, basket headers, and reusable email templates.
-
-The app now uses real household data. No sample products are added to your account. Updates refresh on focus and periodically; offline writes are not queued.
+Production runs on **Vercel Hobby** with **MongoDB Atlas Free/M0 in AWS us-east-1** and **Resend**. Registration, verification email/link, household creation, shared use, and password recovery were confirmed live. Production started with fresh accounts; existing local data was not migrated. Hosted preview deployment is deferred by user choice. Manual backup/recovery is tested; automatic backups are not configured.
 
 ## 🚀 Get started
 
-**Requirements:** Node.js **20.19+** and npm. A current Node.js LTS release is recommended.
+**Requirements:** Node.js **22.x**, npm, and a MongoDB replica set. Database integration/recovery checks also require MongoDB Database Tools (`mongodump` and `mongorestore`) on the host. Docker Desktop is optional if native MongoDB is available.
 
 ```bash
 git clone https://github.com/Mandres07/grocery-list.git
 cd grocery-list
 npm ci
-npm run dev
+cp -n .env.example .env.local
 ```
 
-Open **[localhost:3001](http://localhost:3001)**. Already have the repository? Run the last two commands from your project folder.
+The copy command preserves an existing `.env.local`. For an existing checkout, keep its credentials and saved database directory.
 
-Port **3001** allows Scorecast to keep using port 3000. For another port, use `npx next dev --webpack -p 3002`.
+### 🍃 Start the local database
 
-### 🍃 Set up the local database
-
-With Docker Desktop installed and running:
+Use **one** of the [local database guide](docs/local-database.md)'s options. With Docker Desktop running and no native database already using port 27018:
 
 ```bash
 npm run db:up
-npm run db:check
 ```
 
-The database uses its own volume and port **27018**. The verification command creates a temporary local test database, exercises indexes, household boundaries, and transactions, then removes only that temporary database.
+For this workstation's existing native database, start `mongod` using its saved `.local/mongo` directory as documented in that guide. Do not replace it with an empty test database or run Docker on the same port. The app database is `grocery_list`, replica set `grocery-rs`, port **27018**.
 
-**No Docker?** The [local database guide](docs/local-database.md) includes instructions for the MongoDB installation already present on your Mac.
+### 👤 Configure accounts and email
 
-### 👤 Set up accounts and email
+Edit the ignored `.env.local` using [Accounts and email](docs/accounts.md): generate a unique `NEXTAUTH_SECRET` and set this app's Resend Sending key. The approved sender is `Lista de Compras <no-reply@updates.finalscore.win>`. Never copy Scorecast credentials. Local development requires no Atlas or Vercel credentials.
 
-Follow the [account setup guide](docs/accounts.md) to configure a unique session secret and a dedicated Resend API key. Lista de Compras currently uses the existing `updates.finalscore.win` sending domain, with its own sender name and credentials. No Google, Atlas, or Vercel setup is needed for this local milestone.
+```bash
+npm run dev
+```
 
-Register directly at `/`; `/register` is a compatibility redirect. Registration signs you in immediately. Confirm your email to create or join a household at `/household`, then open `/inventory`. The account menu includes profile information and sign-out. Registration never creates an extra household for an invitee.
+Open **[localhost:3001](http://localhost:3001)**. Port 3001 keeps this app separate from Scorecast on port 3000. If testing another port, change `NEXTAUTH_URL` to match; email links and browser origin must agree.
 
-[`.env.example`](.env.example) documents the local defaults. Local database checks need no provider credentials. Sign-in needs a unique session secret, and verification email needs your own Resend key in ignored `.env.local`. Registration remains usable during email-provider failures, with shared features locked until verification. Production credentials belong in hosting settings.
+Register at `/`; `/register` is a compatibility redirect. Signed-in `/` and `/sign-in` visits lead to inventory. Accounts awaiting verification or household setup are redirected to `/household`; an invitation continues into its existing household. Personal account settings and sign-out remain available before verification.
+
+### ☁️ Hosted operations
+
+See [Hosted database](docs/hosted-database.md) and [Deployment](docs/deployment.md). Private maintenance settings use `.env.atlas.local`; generated Vercel imports use `.env.vercel.production.local` and, only if preview is enabled later, `.env.vercel.preview.local`. These files are ignored and separate from `.env.local`. Keep production credentials scoped to Production only.
 
 ## 🛠️ Built with
 
-| Layer | Technology | Progress |
+| Layer | Current implementation |
+| --- | --- |
+| Application | Next.js 16.4.5 App Router · React 19.2.4 · TypeScript 5.9.3 · Webpack |
+| Styling | Tailwind CSS 4.3.4 · shared theme tokens · local Manrope font |
+| Persistence | Mongoose 9.12.0 · MongoDB transactions · household-scoped models |
+| Authentication | NextAuth 4.24.15 · credentials/JWT sessions · verified accounts |
+| Email | Resend verification, recovery, and invitations · shared branded template |
+| Hosting | Vercel Hobby · Node 22 · iad1 · isolated Atlas production/preview database users |
+| Validation | ESLint · TypeScript · Vitest 4.1.12 · production build · disposable database tests |
+
+Frontend and backend share one repository. Current membership, transaction guards, product revisions, and retained request IDs protect persistent changes. Versions above reflect the deployment preparation on 2026-11-04; [package.json](package.json) and the lockfile are authoritative.
+
+## 🧭 Roadmap
+
+We stop after each milestone for testing and review. The [implementation plan](docs/implementation-plan.md) tracks current status; [historical notes](docs/history/implementation-notes.md) preserve earlier checkpoints and their test counts.
+
+| Milestone | Focus | Status |
 | --- | --- | --- |
-| Application | Next.js App Router · React · TypeScript | ✅ Configured |
-| Styling | Tailwind CSS · shared theme tokens | ✅ Configured |
-| Data foundation | MongoDB · Mongoose · eight domain models | ✅ Locally verified |
-| Validation | ESLint · TypeScript · Vitest · production build | ✅ Configured |
-| Authentication | NextAuth · verified accounts · household creation | ✅ Implemented; continuation authorized |
-| Email | Resend verification, recovery, and invitations | ✅ Account delivery confirmed; new design/invitations need manual review |
-| Hosting | Vercel · MongoDB Atlas | 📋 Upcoming |
+| **01–02** | Foundation, models, local replica set, access helpers | Complete |
+| **03–04** | Accounts, email, household creation, family invitations | Complete |
+| **05** | Shared inventory, categories, stock, activity, responsive UI | Complete |
+| **06** | Shared shopping and atomic batch receipt | Complete |
+| **07** | Atlas isolation, index preparation, export/recovery | Complete |
+| **08** | Vercel and production email | Complete; preview deployment deferred |
+| **09** | Release checks and Home Screen setup | Not started |
 
-Frontend and backend live in **one repository**, following the sibling Scorecast project's architecture. Household authorization, transactions, and retained request IDs protect persistent inventory changes.
+Each member has their own account. Verified household members manage inventory and shopping; the owner additionally manages invitations and membership. Household renaming/deletion, member-initiated leaving, ownership transfer, and multiple-household navigation are not implemented. Barcode scanning, photos, expiry dates, fractional quantities, and offline writes are also deferred.
 
-## 🧭 What's next
-
-We stop after each milestone for testing and review.
-
-| Milestone | Focus | Progress |
-| --- | --- | --- |
-| **01 · Foundation** | Project setup, visual direction, sample inventory | ✅ Implemented |
-| **02 · Data foundation** | Local database, models, access helpers, and verification | ✅ Completed and reviewed |
-| **03 · Accounts** | Registration, verification, sign-in, recovery, household creation | ✅ Email confirmed; continuation authorized |
-| **04 · Family sharing** | Invitations and owner-only member management | ✅ Implemented; approved for commit |
-| **05 · Inventory** | Products, categories, stock, activity, and undo | ✅ Implemented; approved for commit |
-| **06 · Grocery list** | Shared shopping and confirmed stock receipt | 📋 Planned |
-| **07 · Hosted database** | Atlas, environment isolation, and recovery | 📋 Planned |
-| **08 · Deployment** | Vercel and production email | 📋 Planned |
-| **09 · Everyday use** | End-to-end review and Home Screen setup | 📋 Planned |
-
-### 👨‍👩‍👧‍👦 Sharing, with clear boundaries
-
-Each family member will have their **own account**, sharing one household inventory and grocery list.
-
-- **Everyone in the household:** manage products, categories, stock, and shopping items.
-- **Household owner only:** invite family members, revoke invitations, and remove members.
-- **After removal:** access ends while shared products and activity remain.
-
-Barcode scanning, photos, expiration dates, fractional quantities, and offline updates are reserved for later consideration.
-
-## ✅ Development commands
+## ✅ Development and maintenance commands
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the app on port 3001 |
-| `npm run check` | Run lint, types, unit tests, and production build |
-| `npm test` | Run database-independent behavioral tests |
-| `npm run test:watch` | Watch unit tests during development |
-| `npm run db:up` | Start the local Docker replica set and wait for readiness |
-| `npm run db:check` | Verify a running local database with integration tests |
-| `npm run db:down` | Stop Docker services while retaining local data |
-| `npm run start` | Serve a completed production build |
+| `npm run dev` | Start local development on port 3001 |
+| `npm run check` | Lint, type checking, unit tests, and production build |
+| `npm test` / `npm run test:watch` | Database-independent tests / watch mode |
+| `npm run db:up` / `npm run db:down` | Start/stop the Docker replica set, retaining its data |
+| `npm run db:check` | Local disposable integration tests, including export/recovery |
+| `npm run db:prepare` / `npm run db:inspect` | Explicit maintenance target: prepare indexes / inspect indexes and transactions |
+| `npm run db:backup -- --writes-paused` | Export the configured database after pausing its writers |
+| `npm run db:restore-test -- <archive>` | Restore into a separate empty recovery database and verify checksums/indexes |
+| `npm run db:verify-access` | Check preview/production app-user isolation; removes its diagnostic collections |
+| `npm run tokens` | Regenerate CSS/icon/email branding from theme sources |
+| `npm run start` | Serve a completed production build on port 3001 |
 
-Unit tests run without MongoDB. Integration tests require the local replica set; see the [database guide](docs/local-database.md).
+`db:check` always uses generated disposable databases on the local replica, not Atlas or real application data. Maintenance commands load `.env.atlas.local` explicitly. The latest completed application verification on 2026-11-04 passed **208 unit tests**, **87 integration tests**, lint, types, and build, with **zero npm audit findings**. These are recorded results, not a substitute for rerunning checks after code or dependency changes.
 
 ## 📚 Documentation
 
-| Location | What you'll find |
+| Location | Contents |
 | --- | --- |
-| [`app/`](app/) | Pages, layouts, and future API routes |
-| [`components/`](components/) | Shared forms, account navigation, inventory, and activity |
-| [`models/`](models/) | Household, identity, inventory, and shopping schemas |
-| [`lib/`](lib/) | Database connection and household/reference guards |
-| [`styles/theme.json`](styles/theme.json) | Shared editable colors, fonts, and sizes for web and email |
-| [`styles/tokens.css`](styles/tokens.css) | Tailwind mapping for the generated theme variables |
-| [Implementation plan](docs/implementation-plan.md) | Milestones and review checkpoints |
-| [Architecture](docs/architecture.md) | Application design and access rules |
-| [Local database](docs/local-database.md) | Startup, verification, and troubleshooting |
-| [Accounts and email](docs/accounts.md) | Resend configuration and account review steps |
-| [Family sharing](docs/family-sharing.md) | Invitations, member management, and review steps |
-| [Inventory and onboarding](docs/inventory.md) | Saved products, stock integrity, simplified access, and review steps |
+| [Implementation plan](docs/implementation-plan.md) | Current milestones, scope decisions, and next review |
+| [Architecture](docs/architecture.md) | Implemented boundaries, authorization, persistence, environments |
+| [Local database](docs/local-database.md) | Startup, saved data, tools, verification, troubleshooting |
+| [Accounts and email](docs/accounts.md) | Local credentials, verification/recovery, hosted URLs |
+| [Family sharing](docs/family-sharing.md) | Invitations, membership, and two-account review |
+| [Inventory](docs/inventory.md) | Products, priority ordering, stock integrity, and activity |
+| [Shopping](docs/shopping.md) | Purchase checks, inline quantities, atomic receipt, history |
+| [Hosted database](docs/hosted-database.md) | Atlas users, indexes, backup/recovery, hosted verification |
+| [Deployment](docs/deployment.md) | Vercel configuration, assigned domain, production verification |
+| [UI standards](docs/ui-standards.md) | Reusable components, tokens, typography, compact controls |
+| [Historical implementation notes](docs/history/implementation-notes.md) | Earlier milestone snapshots and superseded decisions |
+| [app/](app/) · [components/](components/) · [lib/](lib/) · [models/](models/) | Routes, shared UI, services, and schemas |
+| [styles/theme.json](styles/theme.json) · [styles/tokens.css](styles/tokens.css) | Editable design tokens and Tailwind mapping |
 
 ## 📄 License
 
 [MIT](LICENSE) · Mario Andrés Morales
-
----
-
-<div align="center">
-
-**Un hogar. Un equipo.** 🌿<br />
-Made for the little things that keep a home running.
-
-</div>

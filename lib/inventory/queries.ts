@@ -9,6 +9,7 @@ import Category from "@/models/Category";
 import StockMovement from "@/models/StockMovement";
 import { parseActivityFilters, literalNamePattern, type ActivityFilters } from "./activity-filters";
 import { descendantCategoryIds, type InventoryCategory } from "./categories";
+import { INVENTORY_NAME_COLLATION } from "./stock-status";
 
 export async function requireInventoryReadAccess(actor: HouseholdActor, householdId: string) {
   await connectToDatabase();
@@ -31,7 +32,7 @@ export async function listInventory(actor: HouseholdActor, householdId: string, 
     ...(categoryId ? { categoryId: { $in: descendantCategoryIds(categories, categoryId).map(requireObjectId) } } : {}),
     ...(filters.lowStock ? { $or: [{ quantity: 0 }, { lowStockThreshold: { $ne: null }, $expr: { $lte: ["$quantity", "$lowStockThreshold"] } }] } : {}),
   };
-  const records = filters.archived ? Product.find(filter).sort({ name: 1, _id: 1 }).limit(100).lean() : Product.aggregate<IProduct & { _id: Types.ObjectId }>([
+  const records = filters.archived ? Product.find(filter).collation(INVENTORY_NAME_COLLATION).sort({ name: 1, _id: 1 }).limit(100).lean() : Product.aggregate<IProduct & { _id: Types.ObjectId }>([
     { $match: filter },
     { $addFields: { stockPriority: { $switch: { branches: [
       { case: { $eq: ["$quantity", 0] }, then: 0 },
@@ -40,7 +41,7 @@ export async function listInventory(actor: HouseholdActor, householdId: string, 
     { $sort: { stockPriority: 1, name: 1, _id: 1 } },
     { $limit: 100 },
     { $unset: "stockPriority" },
-  ]);
+  ]).collation(INVENTORY_NAME_COLLATION);
   const [products, total] = await Promise.all([records, Product.countDocuments(filter)]);
   return { categories, total, products: products.map((product) => ({
     id: product._id.toString(), name: product.name, unit: product.unit, quantity: product.quantity,

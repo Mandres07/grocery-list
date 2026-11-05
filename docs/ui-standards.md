@@ -1,14 +1,14 @@
 # Shared UI conventions
 
-Keep the warm background, green brand foundation, terracotta accents, and serif welcome heading. Application forms and lists use compact spacing, clear sans-serif headings, and gently squared controls.
+Keep the warm background, green brand foundation, terracotta accents, and locally bundled Manrope for welcome headings and app content. Application forms and lists use compact spacing, clear sans-serif headings, and gently squared controls.
 
 - Define shared colors, spacing, dimensions, and radii in `styles/theme.json`. Run `npm run tokens` to regenerate web and email assets; do not edit generated outputs directly.
 - Name shared classes by appearance, purpose, or behavior rather than a page or element location: `surface-outlined`, `stack`, `record-row`, `measure-narrow`, `action-primary`, and `disclosure`.
 - Reuse `FormField`, `PasswordField`, `ActionForm`, and `RecordRow` before duplicating field markup or list structure. Keep password visibility controls separate from submit actions.
-- Preserve touch targets of at least the shared `touch` size (44px), visible focus, native labels, and live feedback. Empty feedback must not reserve visible space.
+- Use the shared `touch` size (44px) for general controls; the explicitly requested compact record actions/steppers use `control-compact` (32px). Preserve visible focus, native labels, and live feedback in both variants. Empty feedback must not reserve visible space.
 - Use divided rows for repeated records and separators for related sections. Reserve outlined or raised surfaces for content that needs a distinct boundary.
 - On narrow screens, show the welcome introduction, registration form, then supporting benefits. Keep both welcome and registration columns on desktop.
-- Keep primary search and stock actions visible. Use URL-based section navigation for Products, Categories, and Activity; put advanced filters in a compact dropdown and product creation in the shared native modal. Product-detail activity may remain in a disclosure.
+- Keep the header filter trigger and row stock controls reachable. Use URL-based section navigation for Products, Categories, and Activity; search/filters and creation use shared native modals. Product-detail sections also use a URL-based tab strip, with the selected activity panel rendered directly.
 
 Validate desktop and mobile layouts and run `npm run check` after application changes.
 
@@ -24,12 +24,11 @@ Stock controls show confirmed server quantities and revisions. Reconcile action 
 
 Use `InventoryShell` for inventory section headings and navigation, `Modal` for native dialog behavior, and `ProductCategoryField`/`CategorySelect` for existing or inline category choices. Modal dimensions and backdrop color belong in theme tokens. Uncertain saves must retain request data and block accidental modal dismissal until resolved.
 
-
 Products and Categories must share `InventoryShell`, `ListFilters` and `FormDialog`: header filter/create actions, compact results, and modal search/filtering and creation/editing. Category deletion uses a confirmation dialog. Filters retain their values in URLs. The icon indicates active search/filters; modal forms apply through GET and support clearing, Escape, outside interaction, and focus restoration.
 
 Standalone data-entry forms use the shared `surface-raised` card (background, border, radius, and padding tokens). `AccountForm` applies this for visible fields; `ActionForm` does so for standalone editable content. Use `embedded` only when an existing card or modal already owns the surface. Authentication panels, modals, and invitation workflows use that same surface treatment; command-only row actions remain compact within their owning record or panel. Do not nest a second form card inside a dialog.
 
-Use `table-responsive` for tabular record collections that become compact rows on mobile. Keep native table headers and explicit roles when changing display for narrow screens. `cell-primary`, `cell-description`, and `cell-actions` describe each cell’s role. Routine stock saving/success messages use a screen-reader live region without taking layout space; errors and retry controls remain visible. Use compact rows with shared spacing tokens and keep controls at the minimum touch size. Use `glyph-icon` for icon artwork and `action-icon` for icon-only button targets.
+Use `table-responsive` for tabular record collections that become compact rows on mobile. Keep native table headers and explicit roles when changing display for narrow screens. `cell-primary`, `cell-description`, and `cell-actions` describe each cell’s role. Routine stock saving/success messages use a screen-reader live region without taking layout space; errors and retry controls remain visible. Use compact rows with shared spacing tokens and the appropriate general or explicitly compact control token. Use `glyph-icon` for icon artwork and `action-icon` for icon-only button targets.
 
 Render `AppFooter` once in the root layout for both authentication and account pages. It reuses brand constants, the shared content width, colors, typography, and link touch targets, with “Hecho en 🇵🇦 por mandres.dev” linking to the creator. Keep the footer at the bottom of short pages through the `viewport-column` layout without fixing it over content.
 
@@ -39,7 +38,7 @@ Use SectionPanel for compact grouped settings: a shared surface, descriptive ico
 
 Use locally bundled Manrope through the shared typography tokens, green primary actions, a soft neutral canvas, white collection/panel surfaces, and restrained terracotta details. All palette, typography, spacing, radii, and elevation values belong in theme.json; the generator exports the shadows group as shadow CSS variables. Load the variable font through next/font/local in the root layout, keeping builds and browser visits independent of external font providers. Use 700 for headings/product names, 600 for controls/navigation, and 400–500 for body text. Email typography uses its own plain family stack with system fallbacks because email clients cannot resolve the app’s CSS variables.
 
-NavigationLink owns route-aware active state in a small client boundary; page/data components stay on the server. Use collection-surface for compact tables and lists, symbol-muted for supporting icons, and label-soft for categories and movement amounts. Quantity controls form one bounded stepper while retaining independent 44px actions. On phones, product names show up to two lines, with full names retained in the accessible link and product details. Category and activity icon actions require specific accessible labels. Secondary and undo actions remain visually quiet; uncertain writes still expose their full retry action.
+NavigationLink owns route-aware active state in a small client boundary; page/data components stay on the server. Use collection-surface for compact tables and lists, symbol-muted for supporting icons, and label-soft for categories and movement amounts. Quantity controls form one bounded stepper with independent, labeled actions; compact list steppers use the shared 32px variant. On phones, product names show up to two lines, with full names retained in the accessible link and product details. Category and activity icon actions require specific accessible labels. Secondary and undo actions remain visually quiet; uncertain writes still expose their full retry action.
 
 ### Overlay motion
 
@@ -51,7 +50,7 @@ Menu toggle strokes morph into a cross using the existing disclosure open state.
 
 SectionNavigation is shared by inventory and product pages. It renders semantic navigation links with aria-current; its small client effect reveals the selected link inside an overflowing strip on selection/resize. Data fetching and section panels stay server-rendered. Use measure-form for focused forms, with SectionPanel owning the single surface.
 
-Use shared stockStatus and compareStockProducts helpers for visible buying urgency. ProductTable reconciles confirmed quantities by revision and derives row order and low-stock filter membership from those values; never wait for a refresh alone to update labels. Keep urgency badges as text and use existing accent/warning tokens for narrow record markers. Zero stock is urgent even without a warning threshold; archived records remain neutral.
+Use shared stockStatus and compareStockProducts helpers for visible buying urgency. ProductTable reconciles confirmed quantities by revision and updates labels/status immediately. Freeze row order and low-stock filter membership while adjustments are in flight and for 1.5 seconds afterward; another adjustment resets the timer. Never wait for a refresh alone to update quantity labels. Keep urgency badges as text and use existing accent/warning tokens for narrow record markers. Zero stock is urgent even without a warning threshold; archived records remain neutral.
 
 Shopping quantities use control-quantity with the quantity-entry size token and native positive whole-number constraints. They save atomically when the row is checked as purchased. The shared ActionForm supports a disabled command and an optional success destination; shopping receipt uses these for one batch confirmation and received history. Mark uncertain forms with data-uncertain so focus/interval refresh cannot discard retry state. Batch writes freeze row actions until resolved. Keep batch confirmation unavailable while a row write is pending/uncertain or while the list is filtered.
 

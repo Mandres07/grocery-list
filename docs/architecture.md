@@ -1,66 +1,62 @@
 # Architecture
 
-## Application
+## Application and current deployment
 
-One Next.js App Router repository contains the frontend and backend. React and Tailwind provide the mobile-first Spanish interface; server-side services and API routes will enforce access and inventory rules. Vercel hosts the app; MongoDB Atlas stores data; Resend sends transactional email. Do not introduce an independently deployed API without a demonstrated need.
+One Next.js App Router repository contains the Spanish frontend and backend. Server Components fetch authorized data; Server Actions perform mutations. Small client components own forms, session interactions, stock controls, dialogs/navigation, and refresh behavior. No independently deployed API is required. The NextAuth endpoint lives at `app/api/auth/[...nextauth]/route.ts`.
 
-The initial versions match the installed Scorecast stack: Next.js 16.2.9, React 19.2.4, Tailwind 4.3.1, and strict TypeScript. Webpack matches Scorecast and avoids introducing a bundler difference at setup. Reassess supported versions before public deployment.
+The current stack is Next.js 16.4.5, React 19.2.4, TypeScript 5.9.3, Tailwind 4.3.4, Mongoose 9.12.0, and NextAuth 4.24.15. Node 22 is pinned and builds use Webpack. These versions include the deployment security updates; `package.json` and the lockfile are authoritative. Production runs on Vercel Hobby in iad1, near the separate Atlas Free/M0 cluster in AWS us-east-1. Resend sends verification, recovery, and invitation emails. See [deployment](deployment.md).
 
-## Current checkpoint boundaries
+Milestones 1–8 are complete. Production started with fresh accounts by user choice; local household data was not migrated. Protected hosted preview deployment is explicitly deferred. See the [implementation plan](implementation-plan.md) for current scope and [history](history/implementation-notes.md) for superseded checkpoints.
 
-The root page is a Server Component with the original welcome column beside a registration form. Signed-in users redirect to their household. Registration authenticates through NextAuth immediately; unverified users can use personal account pages but cannot access household or inventory features. The shared header includes a native disclosure menu with account navigation and sign-out. Sample inventory has been removed. See `accounts.md` and `inventory.md`.
+## Routing and identity
 
-Milestone 2 adds Mongoose models, a lazy cached database connection, current-membership/owner guards, household-scoped product/category reference checks, a category ancestry guard, and isolated local verification tests. The app opens no database connection at module import time. Docker Compose configures a loopback-only single-node replica set at port 27018, separate from Scorecast. Native MongoDB can use the same connection settings; see `local-database.md`.
+`/` and `/sign-in` share the server-rendered authentication layout with welcome content and separate form components. Signed-in users opening either route redirect to `/inventory`. Registration authenticates immediately; server guards send accounts needing verification or household setup to `/household`. Personal `/account` settings and sign-out are available before verification. A pending invitation survives registration/sign-in and resumes through explicit acceptance, without creating another household.
 
-Household ownership has a single source of truth: `Household.ownerId`. Every member, including the owner, has a Membership; the role is derived rather than accepted from a client-provided field. Future session-authenticated routes must invoke access guards. Cross-document writes must call reference guards in their transaction; schemas alone do not act as foreign-key or authorization enforcement.
+NextAuth uses credentials, encrypted JWT session cookies, Node scrypt password hashes, and app-specific cookie names. Current user/session version and verification are read from MongoDB for protected access. Password reset increments the session version, invalidating old sessions. Verification/recovery tokens are hashed, expire explicitly, and are consumed only by form submissions. MongoDB-backed rate limits are shared across workers. Google OAuth is not enabled. See [accounts](accounts.md).
 
-The integration verification suite always uses the fixed local endpoint and a generated disposable database, ignoring application database credentials. Production connection setup requires an explicit URI and database name. Production index provisioning will call the provided `initializeDatabase` helper during deployment/maintenance, not on every request.
+Household ownership comes from `Household.ownerId`; every member, including the owner, has a Membership. Roles are derived server-side, never trusted from a form or JWT. Every shared query and write checks verified identity and current membership. Removing a member revokes subsequent access while preserving their account and historical activity. Cross-document writes also validate household-scoped references inside the transaction; model schemas are not foreign-key or permission enforcement.
 
-## Planned ownership model
+Verified members manage inventory and shopping. Only the owner manages invitations and removes members. Household rename/delete, member-initiated leaving, ownership transfer, and account deletion are not implemented; owner departure must not be added without an ownership resolution. A user belongs to one household in the current UI/workflow. See [family sharing](family-sharing.md).
 
-Milestone 3 implements verified email/password accounts using NextAuth JWT sessions and Node scrypt, following Scorecast's approach. Password resets invalidate previous sessions through a database session version checked on every protected request. Verification/recovery tokens are hashed fields on User and are atomically consumed with explicit expiry. MongoDB-backed attempt budgets are shared between workers. Email delivery uses Resend's REST API with server-side settings and the agreed sending domain; no Scorecast secrets are reused. See `accounts.md`.
+## Persistence and integrity
 
-Registration does not create a household. Authenticated household creation locks the current user document in a transaction and writes the household and owner membership together. The household page reads current membership and calls the existing access guard. Server Actions perform mutations; form status, NextAuth browser interactions, stock controls, and refresh behavior use small client components. Saved inventory is implemented in milestone 5.
+The ten Mongoose models are:
 
-Users have individual accounts. A household owns its inventory and shopping list, and has one owner plus members. Registration leads to creating a household or accepting an invitation, without silently creating an extra household for an invitee.
+- User: identity, password/token hashes, verified email, session and household revisions.
+- Household and Membership: ownership and current household access.
+- Invitation: email-bound, hashed single-use token, expiry, delivery/state.
+- Category: household and optional same-household parent, without cycles.
+- Product: household, category, unit, nonnegative integer quantity, warning threshold, revision, archive state.
+- StockMovement: author, before/after quantities, delta, reason, request ID, optional undo reference.
+- ShoppingItem: optional product link, snapshot name/unit, quantity, purchased/received state, revision, receipt quantity/time/movement.
+- AuthRateLimit: shared request budgets with TTL cleanup.
+- InventoryRequest: durable mutation fingerprint and result for retry deduplication.
 
-Both owner and members can manage products, categories, quantities, and shopping items. Only the owner can invite, revoke invitations, remove members, rename, or delete the household. A member can leave. Owner departure or account deletion must not orphan the household: require an explicit ownership resolution first.
+A lazy cached connection opens only when needed. Production requires an explicit URI/database and disables automatic index creation. Maintenance commands call `initializeDatabase` from the actual model definitions; index creation is not repeated on every request.
 
-Every query and mutation must be authorized using the signed-in user's current membership, never a client-provided role or household ID alone. Removal revokes access on subsequent requests even if the login session is still valid. Preserve shared inventory and historical activity after member removal.
+Transactional authorization locks user/household revisions to serialize creation, invitation acceptance, membership removal, and shared writes. Product revisions reject stale metadata edits and absolute counted corrections. Conditional atomic deltas enforce nonnegative safe integers. Stock and activity commit together. Undo appends one compensating movement against current stock, preserving later changes. `InventoryRequest` retains fingerprints/results, including no-op requests, and retries recheck current permission before returning the prior result.
 
-## Planned data
+Default categories initialize transactionally once per household, preserving existing equivalents and later user edits/deletions. Inline category creation and product creation share the transaction.
 
-- User: individual identity and verified email.
-- Household: household name and owner.
-- Membership: unique household/user access relationship.
-- Invitation: household, normalized recipient email, hashed single-use token, expiration, and state.
-- Category: household and optional parent; validate same-household parents and disallow cycles.
-- Product: household, name, unit, category, nonnegative integer quantity, threshold, and archive state.
-- Stock movement: household, product, actor, delta, time, and unique request identifier.
-- Shopping item: household, optional product, custom description, quantity, and purchase state.
+## Inventory and shopping boundaries
 
-## Planned inventory integrity
+Inventory server queries prioritize zero stock, then warning-threshold stock, then available stock before the 100-result limit. Archived browsing stays alphabetical. The client reconciles quantities by revision and updates labels immediately, while keeping row membership/order fixed during adjustments and for 1.5 seconds after all requests settle. Another press resets the timer; changing filters creates a fresh list. Product details and global inventory sections use URL-backed tabs. Activity filters are applied before the 50-movement limit.
 
-Use atomic deltas for +/−, conditional guards against negative quantities, request deduplication, and transactions to save quantity changes and activity together. Use concurrency checks for absolute corrections. Undo is a compensating movement, not restoration of an old quantity. Use a separate local Docker replica set and port so transactional tests can run alongside Scorecast.
+Shopping has Pending, Purchased, and Received views. Inline quantities save atomically with the purchase check, without changing stock. Explicit batch receipt pins reviewed IDs/revisions/quantities and updates linked stock, activity, and receipt history in one transaction; one conflict rolls everything back. Custom entries become received without creating inventory products. Deterministic per-item movement IDs and retained request results prevent duplicate receipts. A received shopping record remains historical if its stock movement is later undone. See [inventory](inventory.md) and [shopping](shopping.md).
 
-Initially refresh data on focus and periodically while visible; communicate offline failures. Do not promise offline stock writes or instantaneous live synchronization. Shopping completion and stock receipt are separate actions; stock receipt must not apply twice.
+Clients preserve request IDs/data for uncertain outcomes, disable conflicting controls, and expose retry/error states. Focus/online/30-second refresh runs only while visible/online and pauses for dirty, pending, or uncertain forms. The app does not implement offline writes or instant push synchronization.
 
-## Environments
+## Environments and operations
 
-Separate local, preview, and production data and credentials. Never reuse Scorecast application secrets or production data. Privileged database and email credentials stay server-side. Email links use a configured application URL, not an untrusted incoming Host header. Production onboarding must not require hand-editing database records.
+- Local: `.env.local`, `grocery_list`, replica `grocery-rs`, port 27018, existing native `.local/mongo` data or the separate Docker volume. Never replace the running saved instance with an empty test database.
+- Tests: unit tests need no database; integration tests hard-code the local replica and create/drop only generated disposable names, ignoring Atlas/app target credentials. Browser fixtures use a separate process on port 27019 with disposable data and email disabled.
+- Atlas maintenance: ignored `.env.atlas.local` with explicit target configuration; restricted maintenance credentials differ from app credentials. Preparation/inspection verify required indexes and transactions. Backup/recovery checks archive/document digests and refuses source/nonempty recovery targets. See [hosted database](hosted-database.md).
+- Hosted app: Production-only private environment settings use `lista-production`/`grocery_list_production`, a unique hosted session secret, and the canonical HTTPS URL. Preview database/user isolation is prepared but hosted previews are deferred. No Scorecast secrets/data are reused.
 
-## Family sharing and branding
+Email URLs use the configured `NEXTAUTH_URL`, never an incoming Host header. The production origin is `https://lista-de-compras-beta-eight.vercel.app`. Local email links remain local; a phone's localhost is not the development Mac. Atlas network access permits Vercel Hobby's dynamic egress using the user-configured project IP entry, with database-specific authentication still enforced. Paid backups are disabled; the tested manual backup process is not scheduled automatically.
 
-Milestone 4 implements seven-day email-bound invitations with hashed single-use tokens, owner-only management, resend/revoke, and member removal. Server Actions obtain current identity; transactions recheck session version, verification, ownership and membership. Household revisions serialize permission changes; user revisions serialize household creation and invitation acceptance, preventing simultaneous membership in multiple households. Removal preserves accounts, inventory, and activity. An HttpOnly context cookie carries invitations through signup/sign-in. See `family-sharing.md`.
+## Shared branding and UI
 
-`lib/brand.ts` defines the Spanish app name; `Brand` shares the basket and name between headers. `styles/theme.json` provides color, font and size tokens to web and email. `npm run tokens` generates CSS variables, favicon and the inline email PNG from shared basket geometry, using sharp already supplied by Next.js. Dev/build regenerate these artifacts automatically. One action-email template creates HTML and plain text for verification, recovery, and invitations, escaping dynamic content.
+`lib/brand.ts` owns the visible app name/tagline. `Brand`, `AppHeader`, and `AppFooter` are shared across routes. `styles/theme.json` and `styles/basket.json` generate CSS variables, favicon, and the inline email PNG; do not edit generated assets directly. Manrope is bundled locally through `next/font/local`, without a Google font request. Tailwind and descriptive shared classes define compact responsive surfaces, controls, status text, and reduced-motion-aware overlays.
 
-## Saved inventory
-
-Milestone 5 uses shared transactional authorization for family and inventory writes. User and household revisions serialize permission changes; product revisions reject stale metadata edits and absolute corrections. Conditional increments enforce nonnegative safe integers, and stock/activity commit together. Undo appends a single compensating movement. `InventoryRequest` stores a request fingerprint and result for durable deduplication, including zero-change operations. Archived products and historic actors remain traceable.
-
-Server pages scope every read to a verified account's current household. Small client boundaries submit forms, adjust units, display offline/retry states and refresh on focus or every 30 visible seconds, pausing while a form is dirty. Mutation retries retain their request identifier and data; no offline writes are queued. See `inventory.md` for review steps and current UI limits.
-
-## Hosted database operations
-
-Milestone 7 adds explicitly configured maintenance commands using the application Mongoose models, isolated Atlas production/preview users and databases, and logical backup/recovery checks. Private maintenance settings live in ignored `.env.atlas.local`, separately from the local app. Preparation creates required indexes without removing existing data; inspection checks indexes and transactions. Recovery refuses source/nonempty targets and verifies checksums in a dedicated restore database. See `hosted-database.md` for setup instructions and the completed hosted verification record.
+The single branded transactional-email template provides escaped HTML and plain text, green actions, and an attached CID basket. Email uses its own compatible font stack instead of unresolved web variables. See [UI standards](ui-standards.md) and [font license/source](../app/fonts/README.md).

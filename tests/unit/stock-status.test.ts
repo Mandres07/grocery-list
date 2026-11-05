@@ -32,3 +32,21 @@ describe("shopping urgency", () => {
     expect(replenished.sort(compareStockProducts).map((item) => item.id)).toEqual(["d", "a", "b", "c"]);
   });
 });
+
+describe("Spanish alphabetical inventory order", () => {
+  it.each([0, 1, 5])("ignores capitalization and accents within stock group %s, keeping ñ after n", quantity => {
+    const records = ["zanahoria", "Ñame", "Épinaca", "arroz", "Naranja"].map((name, index) => ({ id: String(index), name, quantity, lowStockThreshold: 1, archived: false }));
+    expect(records.sort(compareStockProducts).map(item => item.name)).toEqual(["arroz", "Épinaca", "Naranja", "Ñame", "zanahoria"]);
+  });
+  it("keeps stable IDs as the tie-breaker for alphabetically equivalent names", () => {
+    const first = { id: "a", name: "arroz", quantity: 5, lowStockThreshold: 1, archived: false };
+    const second = { ...first, id: "b", name: "ÁRROZ" };
+    expect([second, first].sort(compareStockProducts).map(item => item.id)).toEqual(["a", "b"]);
+    expect(compareStockProducts(first, first)).toBe(0);
+  });
+  it("keeps stock priority ahead of alphabetical order", () => {
+    const base = { lowStockThreshold: 1, archived: false };
+    const records = [{ ...base, id: "a", name: "arroz", quantity: 5 }, { ...base, id: "b", name: "Épinaca", quantity: 1 }, { ...base, id: "c", name: "zanahoria", quantity: 0 }];
+    expect(records.sort(compareStockProducts).map(item => item.name)).toEqual(["zanahoria", "Épinaca", "arroz"]);
+  });
+});

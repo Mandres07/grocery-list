@@ -1,100 +1,81 @@
-# 🍃 Local database — milestone 2
+# Local database
 
-The app's sample home page still works without a database. This checkpoint adds the data foundation; registration, invitations, and persistent inventory screens follow in later milestones.
+Accounts, household sharing, inventory, and shopping use real persisted data. Local development is separate from the deployed Atlas databases. The local database configuration is:
 
-## Option A: Docker Compose
+| Setting | Value |
+| --- | --- |
+| App database | `grocery_list` |
+| Replica set | `grocery-rs` |
+| Loopback port | `127.0.0.1:27018` |
+| Docker image / storage | `mongo:8.0` / dedicated named volume |
+| Existing native storage on this workstation | `.local/mongo` |
 
-Install and open [Docker Desktop](https://www.docker.com/products/docker-desktop/) if it is not already working. In the project directory:
+Transactions require a replica set. Use **one** startup method, keeping the existing saved data directory or Docker volume. Do not start Docker on port 27018 while native MongoDB is already using it, and do not replace a saved instance with an empty test directory.
+
+## Docker Compose
+
+With [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running:
 
 ```bash
 npm run db:up
 npm run db:check
 ```
 
-`db:up` waits for MongoDB to become a writable primary. Initial startup may take a minute while Docker downloads the image and initializes the replica set. `db:check` should report seven passing integration tests.
+`db:up` waits for a writable primary; the health check initializes the single-node replica set once. Initial startup may take longer while the image downloads.
 
-Configuration:
+```bash
+npm run db:down
+```
 
-| Item | Value |
-| --- | --- |
-| App database | `grocery_list` |
-| Replica set | `grocery-rs` |
-| Host binding | `127.0.0.1:27018` |
-| MongoDB image | `mongo:8.0` |
-| Storage | Dedicated Docker named volume |
-| Credentials | None; loopback-only local development |
+Shutdown preserves the named volume. Do not add `-v` unless intentionally deleting that data. Docker startup has not been validated on this workstation because Docker Desktop was unavailable; native MongoDB is the verified path here. Do not infer Docker verification from successful native integration tests.
 
-The Compose health check initializes the single-node replica set once. Data persists across `npm run db:down` and subsequent startup. Do not add `-v` to shutdown commands unless intentionally deleting local data.
+## Native MongoDB
 
-## Option B: existing native MongoDB on macOS
-
-This machine has Homebrew MongoDB and mongosh installed. They can run the same local replica set without Docker. Use this option only when Docker is not already running the database on port 27018.
-
-In the project directory, start MongoDB in one terminal:
+This workstation has `mongod`, `mongosh`, `mongodump`, and `mongorestore`. On a new machine, install MongoDB Community Server, mongosh, and MongoDB Database Tools first. From the repository, reopen the existing database in a terminal:
 
 ```bash
 mkdir -p .local/mongo
 mongod --dbpath .local/mongo --replSet grocery-rs --bind_ip 127.0.0.1 --port 27018
 ```
 
-Leave that terminal open. After restarting your Mac or closing that terminal, run the same `mongod` command again to reopen the existing `.local/mongo` data. Accounts and saved inventory live in that directory; do not switch the app port to an empty data directory.
+Keep that process running. After a restart, use the same command/directory; saved accounts and inventory are not stored in the Next.js process.
 
-In a second terminal, initialize the replica set **once**:
+For a **new, uninitialized** local replica only, initialize it in another terminal:
 
 ```bash
 mongosh 'mongodb://127.0.0.1:27018/?directConnection=true' --eval 'rs.initiate({_id:"grocery-rs",members:[{_id:0,host:"localhost:27018"}]})'
 ```
 
-Wait a few seconds for primary election, then run:
-
-```bash
-npm run db:check
-```
-
-An `AlreadyInitialized` response on later starts means initialization has already been completed; do not reconfigure the replica set. Stop the native server with Ctrl+C in its terminal. `.local/` is ignored by Git.
+Wait for primary election, then run `npm run db:check`. An `AlreadyInitialized` result on an existing database means no further initialization is needed; do not reconfigure it. Ctrl+C in its terminal stops that native process. `.local/` is ignored by Git.
 
 ## Application configuration
 
-The development connection defaults to:
+The local development fallback is:
 
 ```text
 mongodb://127.0.0.1:27018/grocery_list?replicaSet=grocery-rs&directConnection=true
 ```
 
-No `.env.local` is needed to run the preview or verification. `.env.example` documents future application settings; real hosted credentials must remain private. Production never defaults to this local URI.
+`.env.example` documents local values. The database alone needs no Atlas credentials; the app additionally needs its own session secret and Resend settings in ignored `.env.local` for sign-in/email. See [accounts](accounts.md). Production requires explicit connection values and never silently falls back to localhost.
 
-MongoDB documents `directConnection=true` for development environments exposing a single replica-set endpoint: [connection targets](https://www.mongodb.com/docs/drivers/node/current/connect/connection-targets/).
+The original local accounts/inventory remain local. Production started fresh by user choice. Atlas maintenance uses a separate `.env.atlas.local`; generated Vercel imports use separate ignored files. Do not overwrite `.env.local` to run a hosted maintenance command. See [hosted database](hosted-database.md).
 
-## What verification checks
+## Verification and required tools
 
-`npm test` runs 36 database-independent checks covering model validation, connection reuse/retry, owner/member permissions, removal checks, and household-scoped references.
+`npm test` runs database-independent unit tests. `npm run db:check` uses the fixed loopback replica and generated `grocery_list_verify_*`, `grocery_list_maintenance_*`, and `grocery_list_restore_*` databases. It ignores the application's configured database and Atlas URI, mocks email delivery, and removes only its own temporary databases/archive files.
 
-`npm run db:check` uses a fixed loopback connection and a uniquely named `grocery_list_verify_*` database. It never uses Atlas credentials or the application's configured database name. It checks:
+The integration suite checks model indexes, account/token/rate-limit workflows, family permissions/concurrency, household-scoped references, inventory stock/undo/deduplication/rollback, shopping batch receipts, and a complete maintenance export/recovery drill. The latter requires **host-installed `mongodump` and `mongorestore`**, even when the database runs in Docker. The app itself does not need these tools at runtime.
 
-1. Unique memberships and normalized account email indexes.
-2. Multiple non-Google users and unique Google account identifiers.
-3. One pending invitation per household/email, with reinvitation after revocation.
-4. Household-scoped stock request deduplication.
-5. Actual transaction rollback.
-6. Cross-household references and category cycle rejection.
-7. Owner/member permissions and revoked membership access.
-
-It deletes only its own temporary verification database at the end. If the process is forcibly terminated, its disposable database may remain; the real `grocery_list` database is unaffected.
-
-Schema declarations alone do not enforce cross-document references or authorization. Future API services must call the access/reference guards and use transactions for related writes. Stock adjustment endpoints are not implemented at this milestone. MongoDB unique constraints are checked by the integration tests rather than assumed from schema validation.
+The latest recorded application verification on 2026-11-04 passed 203 unit tests and 86 integration tests plus lint, TypeScript, and production build. Counts change as tests are added; command output is authoritative. This guide does not claim an unrun check passed.
 
 ## Troubleshooting
 
-- **`docker: command not found`:** install/open Docker Desktop or use the existing native MongoDB option above. This machine currently has a Docker command pointing to a missing Docker Desktop installation.
-- **Cannot connect:** confirm the chosen server is running on port 27018.
-- **Replica set not ready:** wait for primary election; for Docker, check `docker compose ps` and `docker compose logs mongo`.
-- **Port already in use:** run only one of the Docker/native options. Do not stop an unrelated database to free the port.
-- **Transactions require a replica set:** use the startup command above rather than an existing standalone MongoDB service.
+- **Database unavailable after restarting the Mac:** restart the existing native command above using `.local/mongo`; then refresh sign-in. Do not point the app at an empty directory to make the error disappear.
+- **`docker: command not found` or Docker Desktop unavailable:** use the existing native instance or install/start Docker Desktop before selecting Docker. Do not start a second database on the app port.
+- **Port already in use:** inspect which intended database already owns 27018. Never stop an unrelated server to free it.
+- **Replica not ready:** wait for primary election. For Docker, inspect `docker compose ps` and `docker compose logs mongo`. Only initialize a genuinely new replica.
+- **Transactions require a replica set:** restart using the configured replica-set command, not an unrelated standalone MongoDB service.
+- **`mongodump`/`mongorestore` missing:** install MongoDB Database Tools on the host before the recovery integration test or maintenance commands.
+- **Interrupted tests:** generated disposable databases may remain; identify their exact generated names before removal. Never delete `grocery_list` or the saved storage directory as test cleanup.
 
-## Review checkpoint
-
-Milestone 2 has been reviewed. Lint, types, 36 unit tests, and the production build pass; the user also confirmed all seven integration tests pass against their running local replica set. Docker startup remains unverified on this machine. Registration has not been started.
-
-Run `npm run check` and then, with MongoDB running, `npm run db:check`. Confirm all pass and send the output if startup or integration checks fail. The UI remains the design preview; the next milestone introduces registration and household creation.
-
-For an isolated test MongoDB process, use a different port (for example 27019), a disposable data directory, and its own replica-set configuration. Keep the app’s existing process on 27018 running. Generated disposable test database names on an already-running replica set remain isolated from `grocery_list`.
+Separate browser-test processes must use a different port (27019), disposable directory/database, and replica configuration. Keep the saved app process on 27018 in service. A loopback `directConnection=true` URI is a development setting; hosted Atlas uses its own SRV connection.

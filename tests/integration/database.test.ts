@@ -792,6 +792,20 @@ describe("shared inventory workflows", () => {
     expect((await listInventory(owner, home, { query: "agotado" })).products.map((item) => item.name)).toEqual(["A agotado", "Z agotado"]);
   });
 
+  it("uses Spanish alphabetical order consistently across priority groups, filters, and archives", async () => {
+    const names = ["zanahoria", "Ñame", "Épinaca", "arroz", "Naranja"];
+    for (const quantity of [0, 1, 5]) await Product.insertMany(names.map(name => ({ householdId: home, name, quantity, lowStockThreshold: 1 })));
+    const alphabetical = ["arroz", "Épinaca", "Naranja", "Ñame", "zanahoria"];
+    const result = await listInventory(owner, home);
+    expect(result.products.filter(item => item.quantity === 0).map(item => item.name)).toEqual(alphabetical);
+    expect(result.products.filter(item => item.quantity === 1).map(item => item.name)).toEqual(alphabetical);
+    expect(result.products.filter(item => item.quantity === 5).map(item => item.name)).toEqual(alphabetical);
+    expect(result.products.slice(0, 10).map(item => item.quantity)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
+    expect((await listInventory(member, home, { lowStock: true })).products.map(item => item.name)).toEqual([...alphabetical, ...alphabetical]);
+    await Product.insertMany(names.map(name => ({ householdId: home, name, quantity: 5, archivedAt: new Date() })));
+    expect((await listInventory(owner, home, { archived: true })).products.map(item => item.name)).toEqual(alphabetical);
+  });
+
   it("excludes archived products from buying priority and preserves alphabetical archive browsing", async () => {
     await Product.insertMany([
       { householdId: home, name: "A archivado", quantity: 5, lowStockThreshold: 1, archivedAt: new Date() },

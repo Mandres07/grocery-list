@@ -1,11 +1,11 @@
-# Local accounts and email
+# Accounts and email
 
-Milestone 3 follows Scorecast's architecture: NextAuth credentials and JWT sessions, Node scrypt password hashing, MongoDB, and Resend transactional email. Google login remains optional and is not enabled. Atlas and Vercel setup belong to later milestones.
+Accounts use NextAuth credentials/JWT sessions, Node scrypt password hashing, MongoDB, and Resend transactional email. Production is live at [Lista de Compras](https://lista-de-compras-beta-eight.vercel.app); the user verified registration, verification email/link, household creation, sharing, and password recovery. Production started with fresh accounts; local accounts were not migrated. Google login is optional and not enabled. See [deployment](deployment.md) for hosted settings; this guide also covers local development.
 
 ## Configure locally
 
 1. Keep the local MongoDB replica set running on port 27018. See [local database](local-database.md).
-2. Use an ignored `.env.local` in the repository root. This session prepared it with a new Lista de Compras-only `NEXTAUTH_SECRET`, the local URL, and the agreed sender. Never copy Scorecast secrets. For a fresh checkout, copy `.env.example` and generate a secret with `openssl rand -base64 48`.
+2. Use an ignored `.env.local` in the repository root. Keep its existing Lista de Compras-only `NEXTAUTH_SECRET`, local URL, and sender. Never copy Scorecast secrets or overwrite an existing environment file. For a fresh checkout, copy `.env.example` only if `.env.local` does not exist, then generate a secret with `openssl rand -base64 48` and save it privately.
 3. In the existing [Resend account](https://resend.com/domains), confirm `updates.finalscore.win` shows as verified. The user chose this sending domain for now. A verified sending domain does not have to match the application's local address or future hosting domain.
 4. In [Resend API Keys](https://resend.com/api-keys), create `Lista de Compras local` with **Sending access**, restricted to that sending domain. Paste the key into `RESEND_API_KEY` in `.env.local`, not into chat or a committed file.
 5. Keep these settings in `.env.local`:
@@ -13,7 +13,7 @@ Milestone 3 follows Scorecast's architecture: NextAuth credentials and JWT sessi
 ```dotenv
 NEXTAUTH_URL=http://localhost:3001
 NEXTAUTH_SECRET=your-unique-generated-secret
-RESEND_API_KEY=your-new-grocerylist-only-key
+RESEND_API_KEY=your-app-only-sending-key
 RESEND_FROM_EMAIL=Lista de Compras <no-reply@updates.finalscore.win>
 RESEND_REPLY_TO_EMAIL=
 ```
@@ -22,19 +22,19 @@ RESEND_REPLY_TO_EMAIL=
 
 The sender domain is configuration, not embedded in the email code. To change it later, verify the new domain in Resend, update the sender and key permissions, and restart/redeploy. For a new domain, add the sending DNS records that Resend provides; do not replace the root domain's existing email-receiving MX records. See [Resend verified domains](https://resend.com/docs/dashboard/domains/introduction).
 
-## Review the milestone
+## Review the account flow
 
 Use [localhost:3001](http://localhost:3001), with your real inbox after configuring Resend:
 
 1. Open **Crear mi cuenta**, enter a name, email, and password of 12–128 characters. Registration signs you in immediately and attempts to send a verification link. It does not create a household.
-2. Before verification, your account and sign-out menu are available; shared household and inventory actions must remain blocked. Open the verification email and press **Confirmar mi correo**. An existing session continues to the household/invitation without signing in again. Confirming a link requires a form submission, so an email scanner visiting the URL does not consume it.
-3. Create a named household. Reload and sign in again to confirm the name persists and you remain its owner. Open the saved inventory from the household page. The home page retains its introduction beside registration and contains no sample products.
+2. Before verification, your account and sign-out menu are available; shared household and inventory actions must remain blocked. Open the verification email and press **Verificar mi correo**. An existing session continues to the household/invitation without signing in again. Confirming a link requires a form submission, so an email scanner visiting the URL does not consume it.
+3. Create a named household. Reload and sign in again to confirm the name persists and you remain its owner. After household creation you land in `/inventory`; Mi hogar remains available for management. The home page retains its introduction beside registration and contains no sample products.
 4. Sign out and confirm `/household` redirects to sign-in.
 5. Request password recovery. Open the email, enter a new password, and sign in. The old password and existing authenticated sessions must lose access to protected household pages and actions.
 6. Reuse a verification or recovery link; it must fail. Verification expires after 24 hours, recovery after 1 hour. Resending replaces the previous token. Check spam and Resend's delivery logs if an email does not arrive.
-7. Check the pages on a phone and desktop. For this local milestone, email links point to the Mac's localhost:3001; open them on that Mac. A phone's localhost points to the phone. Hosted phone review comes after hosting; a LAN test requires a reachable application URL and consistent browser/form origin.
+7. Check the pages on a phone and desktop. For local development, email links point to the Mac's localhost:3001; open them on that Mac. A phone's localhost points to the phone. For phone use, open the production HTTPS URL. A local LAN test requires a reachable application URL and consistent browser/form origin.
 
-Invitation acceptance is available in milestone 4. A user expecting an invitation can open the invitation email without creating a separate household. See [family sharing](family-sharing.md).
+Invitation acceptance is implemented. A user expecting an invitation can open the invitation email without creating a separate household. See [family sharing](family-sharing.md).
 
 ## Security and failure behavior
 
@@ -50,6 +50,6 @@ Invitation acceptance is available in milestone 4. A user expecting an invitatio
 
 `npm run check` runs lint, types, unit tests, and build. `npm run db:check` exercises the local replica set in a generated disposable database, including account flows, token expiry/reuse, transaction rollback, concurrency, and rate limits. Integration email delivery is mocked: these checks never contact Resend or send messages.
 
-Before hosted deployment, run `initializeDatabase` from `models/index.ts` against the intended database as documented in the architecture; production disables automatic index creation. Use separate production secrets, an HTTPS `NEXTAUTH_URL`, and a verified sender. Review outstanding dependency audit findings before exposing the app publicly.
+For hosted setup, `npm run db:prepare` provisions the actual model indexes using the explicit private maintenance target; production disables automatic index creation. Use this app’s separate production secret, verified sender, and canonical `NEXTAUTH_URL=https://lista-de-compras-beta-eight.vercel.app`, scoped to Production in Vercel. Preview hosting is deferred. The 2026-11-04 deployment security update recorded zero npm audit findings; rerun the audit after dependency changes rather than relying on that historical result. See [hosted database](hosted-database.md) and [deployment](deployment.md).
 
-See [inventory and simplified onboarding](inventory.md) for the current milestone 5 flow and verification restrictions.
+See [inventory and simplified onboarding](inventory.md) for inventory-first routing and verification restrictions.

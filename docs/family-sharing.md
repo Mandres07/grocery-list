@@ -1,20 +1,20 @@
 # Compartir el hogar
 
-El hito 4 permite invitar familiares, aceptar invitaciones, reenviarlas, revocarlas y retirar miembros. Solo la persona propietaria puede gestionar el acceso. El inventario guardado ya está disponible en el hito 5; la lista de compras llegará en el hito 6.
+La app permite invitar familiares, aceptar invitaciones, reenviarlas, revocarlas y retirar miembros. Solo la persona propietaria puede gestionar el acceso. Inventario y Compras están implementados y comparten los datos del hogar. El usuario confirmó el flujo compartido en [producción](https://lista-de-compras-beta-eight.vercel.app); las cuentas y los datos locales siguen separados.
 
 ## Revisar con dos cuentas
 
-1. Reinicia el servidor (`Ctrl+C`, luego `npm run dev`) para cargar los nuevos campos de los modelos y el nombre del remitente. Abre [localhost:3001](http://localhost:3001).
+1. Abre la [app de producción](https://lista-de-compras-beta-eight.vercel.app) en ambos dispositivos. Para revisar cambios locales, usa [localhost:3001](http://localhost:3001) con su réplica y configuración de correo; reinicia el servidor cuando cambies variables o modelos. No mezcles cuentas locales y de producción.
 2. Con la cuenta propietaria, abre **Gestionar mi familia** desde el hogar. Invita un segundo correo al que tengas acceso.
-3. Comprueba el correo: debe mostrar **Lista de Compras**, la canasta y los colores crema/verde. El dominio sigue siendo `updates.finalscore.win`. No necesitas nuevas credenciales ni configurar Google, Atlas o Vercel.
+3. Comprueba el correo: debe mostrar **Lista de Compras**, la canasta y los colores crema/verde. El dominio sigue siendo `updates.finalscore.win`. Producción usa la configuración ya verificada de Atlas, Vercel y Resend; Google no está habilitado.
 4. Abre el enlace en otro perfil/ventana de navegador para conservar la sesión propietaria. Usa el mismo correo que recibió la invitación.
 5. Si es una cuenta nueva, pulsa **Crear mi cuenta**, regístrate: entrarás automáticamente a tu cuenta pendiente. Confirma el correo para continuar a la invitación sin volver a iniciar sesión. Si ya existe y está verificada, pulsa **Ya tengo una cuenta**. El mismo navegador conserva la invitación y vuelve a ella después del acceso. Si cambias de navegador/dispositivo al verificar, vuelve a abrir el enlace original de invitación.
-6. Pulsa **Aceptar invitación**. Debes ver el mismo hogar y tu acceso de miembro, sin crear otro hogar. Un correo diferente, una cuenta sin verificar y una cuenta que ya pertenezca a un hogar no pueden aceptar.
+6. Pulsa **Aceptar invitación**. Debes entrar al inventario del mismo hogar, con acceso de miembro y sin crear otro hogar. Un correo diferente, una cuenta sin verificar y una cuenta que ya pertenezca a un hogar no pueden aceptar.
 7. Desde la cuenta miembro, abre `/family`: debe explicar que la gestión es exclusiva de la persona propietaria, sin mostrar listas privadas ni controles.
 8. Desde la cuenta propietaria, retira al familiar. En su navegador, actualiza o navega de nuevo: ya no debe acceder al hogar anterior. Su cuenta permanece y puede recibir una nueva invitación.
 9. Prueba revocar una invitación y abrir su enlace. Para reenviar, espera un minuto; el nuevo envío reemplaza el enlace anterior y renueva el vencimiento por siete días. Aceptar dos veces no crea membresías duplicadas.
 
-Los enlaces locales apuntan al Mac configurado en `NEXTAUTH_URL`. El `localhost` de un teléfono apunta al propio teléfono; la revisión remota en ambos teléfonos llegará al configurar hosting.
+Los enlaces locales apuntan al Mac configurado en `NEXTAUTH_URL`. El `localhost` de un teléfono apunta al propio teléfono; para revisar desde teléfonos utiliza la URL HTTPS de producción.
 
 ## Seguridad y concurrencia
 
@@ -37,6 +37,6 @@ La base, las cookies y el paquete conservan sus nombres técnicos para mantener 
 
 ## Verificación
 
-`npm run check` ejecuta lint, tipos, pruebas unitarias y compilación. `npm run db:check` ejecuta 31 pruebas contra la réplica local en una base temporal que elimina al terminar. No usa datos reales ni envía correos. Incluye permisos, destinatarios, vencimiento, reutilización, reenvío, revocación, retiro, reinvitación, concurrencia y rollback.
+`npm run check` ejecuta lint, tipos, pruebas unitarias y compilación. `npm run db:check` ejecuta la suite de integración actual contra la réplica local en bases temporales que elimina al terminar. No usa datos reales ni envía correos. Incluye permisos, destinatarios, vencimiento, reutilización, reenvío, revocación, retiro, reinvitación, concurrencia y rollback.
 
-La entrega real de los correos con el nuevo diseño y la revisión con dos cuentas reales quedan para el usuario. No avanzar al hito 5 sin su autorización.
+En el despliegue del 2026-11-04, el usuario confirmó verificación por correo, creación del hogar, uso compartido y recuperación de contraseña. La suite de aplicación registrada pasó 203 pruebas unitarias y 86 de integración; esos resultados no sustituyen volver a probar cambios futuros. La entrega de integración está simulada y nunca envía correos reales. Consulta el [plan actual](implementation-plan.md) para el siguiente hito.

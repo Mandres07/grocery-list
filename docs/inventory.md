@@ -1,6 +1,6 @@
 # Inventario compartido y acceso simplificado
 
-El hito 5 guarda productos y categorías del hogar, ajustes de existencias, correcciones, archivo y actividad. Todos los miembros verificados tienen los mismos permisos sobre el inventario. La gestión de familiares sigue siendo exclusiva del propietario. La lista de compras corresponde al hito 6.
+El inventario guarda productos y categorías del hogar, ajustes de existencias, correcciones, archivo y actividad. Todos los miembros verificados tienen los mismos permisos sobre el inventario. La gestión de familiares sigue siendo exclusiva del propietario. La lista de Compras ya está implementada en `/shopping`; consulta [Compras](shopping.md).
 
 ## Acceso más directo
 
@@ -8,7 +8,7 @@ El hito 5 guarda productos y categorías del hogar, ajustes de existencias, corr
 - Crear una cuenta inicia sesión automáticamente mediante NextAuth. También se permite iniciar sesión antes de verificar el correo. Un fallo del proveedor de correo no impide entrar a la cuenta.
 - El usuario pendiente puede ver su cuenta, cambiar su nombre, cerrar sesión, recuperar contraseña y pedir otra verificación. Crear/unirse a un hogar, gestionar familiares y leer/cambiar inventario requieren verificación en el servidor.
 - Una invitación se conserva durante el registro y la sesión pendiente. Confirmar el correo en el mismo navegador vuelve a la invitación sin pedir de nuevo la contraseña. Se acepta explícitamente la invitación para entrar al hogar; no se crea otro hogar automáticamente.
-- Un usuario con sesión vigente que abre `/` o `/sign-in` vuelve a `/household`. El encabezado compartido ofrece un menú nativo accesible con Mi hogar, Inventario (cuando esté verificado), Mi cuenta y Cerrar sesión.
+- Un usuario con sesión vigente que abre `/` o `/sign-in` vuelve a `/inventory`; si necesita verificar el correo, aceptar una invitación o crear un hogar, los controles del servidor lo llevan a `/household` o al flujo de invitación. El encabezado compartido ofrece Inventario y Compras para cuentas verificadas, Mi hogar, Mi cuenta y Cerrar sesión: enlaces en escritorio y menú accesible en móvil.
 - Las comprobaciones de usuario se comparten dentro de la petición con React `cache`; la verificación y la versión de sesión se leen de MongoDB en cada petición nueva. No se confía en un indicador de verificación enviado desde el navegador.
 
 ## Organización del inventario
@@ -23,11 +23,11 @@ Cada hogar nuevo recibe Despensa, Frutas y verduras, Lácteos y huevos, Carnes y
 
 Crear una categoría desde el formulario de producto guarda ambos registros en la misma transacción. Una categoría equivalente bajo el mismo padre se reutiliza, incluso con creaciones concurrentes. Los errores de producto o de revisión revierten la categoría nueva; no quedan categorías huérfanas.
 
-## Revisar el hito
+## Revisar el inventario
 
-1. Reinicia el servidor (`Ctrl+C`, `npm run dev`). Sigue usando el MongoDB local y la configuración de Resend existente; no se requieren nuevos servicios.
+1. Usa la [app de producción](https://lista-de-compras-beta-eight.vercel.app) para el uso real, o reinicia `npm run dev` para revisar cambios locales con su MongoDB/Resend. Las cuentas y el inventario de ambos entornos son independientes; producción empezó sin migrar datos locales.
 2. Crea una cuenta desde `/`. Debes entrar inmediatamente a la pantalla de cuenta pendiente, con menú y acceso a Mi cuenta. Abrir `/inventory` directamente debe devolver a esa pantalla.
-3. Confirma el correo. Si llegaste por invitación, acepta el hogar existente. Si no tienes hogar, crea uno. Abre **Mi hogar → Abrir mi inventario**.
+3. Confirma el correo. Si llegaste por invitación, acepta el hogar existente. Si no tienes hogar, crea uno. Al terminar, debes entrar a Inventario; Mi hogar queda disponible para gestión.
 4. En **Productos**, abre **Agregar producto**. El formulario aparece en una ventana compacta; agrega nombre, unidad, cantidad inicial y umbral opcional. En **Categoría**, elige **+ Crear categoría…** para crear una categoría o subcategoría sin abandonar el producto. Un umbral de cero también es válido.
 5. Prueba + y −. No se puede bajar de cero. Recarga y comprueba que la cantidad persista. Desde otra cuenta del mismo hogar debes ver el mismo producto y la actividad con su autor.
 6. Abre el producto para editar datos o corregir la cantidad total contada. Si otra persona actualizó el producto, una corrección o edición basada en datos viejos debe pedir actualizar, sin sobrescribir el cambio ajeno.
@@ -37,7 +37,7 @@ Crear una categoría desde el formulario de producto guarda ambos registros en l
 10. Simula una desconexión. No se aceptan escrituras sin conexión ni se encolan automáticamente. Al recuperar internet, reintenta la operación pendiente: conserva su identificador y datos para no aplicarse dos veces.
 11. Retira un miembro desde la cuenta propietaria y comprueba que sus siguientes lecturas y escrituras fallen, aunque conserve una sesión. El historial anterior permanece.
 
-La actualización automática ocurre al volver a la pestaña y cada 30 segundos mientras está visible y conectada. Se pausa mientras un formulario de edición tiene cambios pendientes o está enviándose. No se promete sincronización instantánea ni escrituras offline. Prueba el recorrido con dos cuentas reales antes de avanzar al hito 6.
+La actualización automática ocurre al volver a la pestaña y cada 30 segundos mientras está visible y conectada. Se pausa mientras un formulario tiene cambios pendientes, está enviándose o conserva una operación de resultado incierto. No se promete sincronización instantánea ni escrituras offline. Prueba el recorrido con dos cuentas del mismo entorno; el usuario ya confirmó uso compartido en producción.
 
 ## Integridad
 
@@ -57,7 +57,7 @@ La actualización automática ocurre al volver a la pestaña y cada 30 segundos 
 
 `npm run check`: lint, TypeScript, pruebas unitarias y compilación. `npm run db:check`: pruebas de integración en una base temporal de la réplica local, con correos simulados. Las pruebas incluyen concurrencia, deduplicación, stock no negativo, límites, rollback, correcciones obsoletas, deshacer, archivo, jerarquías, aislamiento, verificación y miembros retirados.
 
-La revisión de navegador usa otra base temporal con correo deshabilitado. Los tokens de confirmación de esa prueba son sintéticos; la entrega real del correo nuevo y el uso con cuentas reales quedan para la revisión del usuario.
+La revisión de navegador usa otra base temporal con correo deshabilitado. Los tokens de confirmación de esa prueba son sintéticos; la entrega de integración sigue simulada. El usuario confirmó los flujos reales de correo y uso compartido durante el despliegue; los cambios posteriores requieren su propia revisión.
 
 ### Inventory as the starting page
 
@@ -71,7 +71,7 @@ Products use the shared ProductTable component: a native table with Producto, Ca
 
 Search and filters live in the shared ListFilters modal triggered by an icon beside the page heading, also used for Categories. The icon marks active searches/filters. GET form submission preserves bookmarkable URLs, direct links, and browser history. Clearing returns to the unfiltered URL; cancelling discards draft filter changes.
 
-Routine stock feedback is announced in a screen-reader live region, without taking visible layout space. Disabled controls indicate saving. Errors and retry actions remain visible when needed. Compact rows reuse shared spacing tokens and retain full-size touch targets.
+Routine stock feedback is announced in a screen-reader live region, without taking visible layout space. Disabled controls indicate saving. Errors and retry actions remain visible when needed. Compact rows reuse shared spacing tokens. Per the explicit compact-row preference, stock buttons use the 32px compact token; general controls retain the 44px touch token.
 
 ### Product sections
 
@@ -87,15 +87,15 @@ Filters apply in the database before the 50-movement limit. Product matches stay
 
 ### Buy-first inventory ordering
 
-Active products appear automatically in buying order: zero stock first, then positive quantities at or below their warning threshold, then adequately stocked products. Each group keeps name/ID order. Zero stock needs no configured threshold. Labels “Sin existencias” and “Por reponer”, plus narrow accent markers, make urgency visible in both desktop tables and compact mobile rows. Archived products retain alphabetical order and do not receive buying labels.
+Active products appear automatically in buying order: zero stock first, then positive quantities at or below their warning threshold, then adequately stocked products. Each group uses Spanish alphabetical order, ignoring capitalization and accents while keeping ñ after n; alphabetically equivalent names use stable IDs as a tie-breaker. Database pagination and client reordering use matching collation rules. Zero stock needs no configured threshold. Labels “Sin existencias” and “Por reponer”, plus narrow accent markers, make urgency visible in both desktop tables and compact mobile rows. Archived products retain alphabetical order and do not receive buying labels.
 
 Ranking and filtering apply before the 100-product database limit. The “Por reponer” filter includes zero stock without a threshold; missing legacy thresholds normalize to null. Search/category filters and household access checks remain in place.
 
-ProductTable has a small client boundary to reconcile confirmed stock responses by revision, immediately updating labels, row order, filtered membership, and result counts after adjustments. Delayed refreshes cannot overwrite a newer confirmed quantity. Failed or uncertain writes retain the existing retry/deduplication workflow and do not report a new stock status.
+ProductTable has a small client boundary to reconcile confirmed stock responses by revision. Quantity labels, badges, and row status update immediately; row order and low-stock filter removal wait 1.5 seconds after all adjustments settle, resetting on another adjustment. Delayed refreshes cannot overwrite a newer confirmed quantity. Failed or uncertain writes retain the existing retry/deduplication workflow and do not report a new stock status.
 
 ### Shared shopping receipts
 
-The Compras navigation item opens the shared `/shopping` list. Its confirmed “Agregar faltantes” action copies active zero/threshold stock into pending purchases without duplicating active linked entries. Marking purchased does not change stock. Only an explicit received quantity adds stock atomically and creates an ordinary receipt movement, so the inventory priority and activity use their existing behavior. Shopping receipt history remains received if its inventory movement is later undone. See `docs/shopping.md` for the full workflow.
+The Compras navigation item opens the shared `/shopping` list. Its confirmed “Agregar faltantes” action copies active zero/threshold stock into pending purchases without duplicating active linked entries. Marking purchased does not change stock. Only explicit batch receipt of the reviewed purchased quantities adds linked stock atomically and creates ordinary receipt movements, so the inventory priority and activity use their existing behavior. Shopping receipt history remains received if its inventory movement is later undone. See `docs/shopping.md` for the full workflow.
 
 Inventory now shares the shopping compact stepper: 32px adjustment buttons, a quantity column using the same compact-width token, and table-compact links/row alignment. Names wrap to at most two lines on both screen sizes, with status badges preserved. Compact size changes do not alter immediate stock persistence, revision reconciliation, or uncertain retry behavior.
 
