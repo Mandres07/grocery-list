@@ -27,6 +27,7 @@ export function ShoppingItemRow({ householdId, item, disabled, onChange, onStatu
   // Refresh clean fields, but retain the revision of an unsaved quantity for conflict detection.
   if (item.revision > entry.revision && entry.draft === String(entry.quantity) && !pending && !uncertain) setEntry({ revision: item.revision, quantity: item.quantity, draft: String(item.quantity) });
   const purchased = item.status === "purchased";
+  const quantityChanged = entry.draft !== String(entry.quantity);
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy.current || disabled) return;
@@ -60,7 +61,7 @@ export function ShoppingItemRow({ householdId, item, disabled, onChange, onStatu
     } finally { busy.current = false; setPending(false); }
   }
   return <li className={`event-row ${item.status === "pending" ? "record-adjustable" : ""}`}>
-    {item.status !== "received" && <form id={id} method="post" onSubmit={save} className="stack-tight" aria-busy={pending} data-dirty={entry.draft !== String(entry.quantity)} data-uncertain={uncertain}>
+    {item.status !== "received" && <form id={id} method="post" onSubmit={save} className="stack-tight" aria-busy={pending} data-dirty={quantityChanged} data-uncertain={uncertain}>
       <button type="submit" className={`action-secondary action-icon action-compact ${purchased ? "text-brand bg-sage" : "text-muted"}`} aria-pressed={purchased} aria-label={`${purchased ? "Volver a pendientes:" : "Marcar como comprado:"} ${item.name}`} disabled={pending || uncertain || disabled}><Icon name="check" className={`glyph-icon ${purchased ? "" : "opacity-30"}`} /></button>
     </form>}
     <div className="min-w-0 flex-1">
@@ -71,6 +72,7 @@ export function ShoppingItemRow({ householdId, item, disabled, onChange, onStatu
     {item.status !== "pending" && <span className="quantity-value text-brand" aria-label={`Cantidad: ${item.status === "received" ? item.receivedQuantity ?? item.quantity : item.quantity}`}>{item.status === "received" ? item.receivedQuantity ?? item.quantity : item.quantity}</span>}
     {item.status === "pending" && <div className="record-adjustment"><QuantityInput compact form={id} label={item.name} value={entry.draft} disabled={pending || uncertain || disabled} onChange={(draft) => setEntry({ ...entry, draft })} /></div>}
     {item.status !== "received" && <FormDialog title="Quitar de la lista" triggerLabel="Quitar" triggerAriaLabel={`Quitar ${item.name} de la lista`} triggerIcon="trash" triggerClassName="action-quiet action-icon action-compact" disabled={pending || uncertain || disabled} submitLabel="Quitar artículo" action={shoppingAction} hiddenFields={{ householdId, itemId: item.id, revision: String(item.revision), kind: "delete" }}><p className="text-sm">Se quitará <strong>{item.name}</strong> de la lista. El inventario no cambiará.</p></FormDialog>}
+    {item.status === "pending" && <p role="status" className={quantityChanged && !pending && !uncertain ? "text-sm text-warning span-full" : "sr-only"}>{quantityChanged && !pending && !uncertain ? "Cantidad sin guardar. Marca el artículo como comprado para guardarla." : ""}</p>}
     <p role="status" className={message ? "field-hint text-warning span-full" : "sr-only"}>{pending ? "Guardando…" : message}</p>
     {uncertain && <button type="submit" form={id} className="action-secondary span-full" disabled={pending || disabled}>Reintentar operación pendiente</button>}
   </li>;

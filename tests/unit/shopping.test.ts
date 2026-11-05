@@ -32,6 +32,10 @@ describe("shared shopping list", () => {
     expect(html).toContain('aria-label="Cantidad de Arroz"');
     expect(html).toContain('min="1"');
     expect(html).not.toContain("Guardar cantidad");
+    expect(html).toContain("marca el artículo como comprado para guardarla en Comprados");
+    expect(html).toContain("confirma la recepción para actualizar el inventario");
+    expect(html).not.toContain("Cantidad sin guardar.");
+    expect(html).not.toContain("se guardó en Comprados.");
     expect(html).toContain('aria-label="Estado de las compras"');
     expect(html).toContain('href="/shopping?status=purchased"');
     expect(html).toContain("Agregar faltantes");
@@ -50,6 +54,7 @@ describe("shared shopping list", () => {
     expect(html).not.toContain('aria-label="Cantidad de Arroz"');
     expect(html).toContain("Confirmar recepción");
     expect(html).toContain("confirma toda la compra");
+    expect(html).toContain("desmarca el artículo y volverá a Pendientes");
     expect(html).not.toContain('aria-label="Agregar artículo"');
     expect(shoppingProductOptions).not.toHaveBeenCalled();
     expect(html).toContain('href="/shopping?status=purchased">Limpiar filtros');
@@ -58,6 +63,7 @@ describe("shared shopping list", () => {
     vi.mocked(listShoppingItems).mockResolvedValue({ items: [{ ...item, productId: null, status: "received", revision: 2, receivedQuantity: 3, receivedAt: "2026-11-04T18:00:00.000Z" }], total: 1, receiptItems: [{ id: item.id, revision: 1, quantity: item.quantity }] });
     const html = await render("received");
     expect(html).toContain("Recibido sin modificar inventario");
+    expect(html).toContain("no se volverán a sumar");
     expect(html).toContain('dateTime="2026-11-04T18:00:00.000Z"');
     expect(html).not.toContain('value="receive"');
     expect(html).not.toContain('value="delete"');
