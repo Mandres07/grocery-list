@@ -32,7 +32,8 @@ Saber qué hay en casa, identificar qué falta y coordinar las compras en famili
 - Mantener el checkout existente y los servicios previstos: GitHub, Vercel, MongoDB Atlas y Resend. No crear alojamiento Sites separado ni copiar secretos o datos de Scorecast.
 - Preservar la base local y su directorio de datos; las verificaciones usan datos desechables separados de los datos reales.
 - Trabajar por hitos y detenerse para revisión del usuario al terminar cada uno; el estado vigente se consulta en `docs/implementation-plan.md`.
-- Siguen fuera del alcance implementado: navegación entre varios hogares, renombrar/eliminar el hogar, salida voluntaria de miembros, transferencia de propiedad, escaneo de códigos, fotos, caducidades, cantidades fraccionarias y escrituras sin conexión. No presentarlos como funciones disponibles.
+- La persona propietaria puede cambiar el nombre compartido desde Mi hogar; el servidor valida cuenta verificada, sesión vigente, propiedad y membresía.
+- Siguen fuera del alcance implementado: navegación entre varios hogares, eliminar el hogar, salida voluntaria de miembros, transferencia de propiedad, escaneo de códigos, fotos, caducidades, cantidades fraccionarias y escrituras sin conexión. No presentarlos como funciones disponibles.
 
 ## Brand Commitments
 

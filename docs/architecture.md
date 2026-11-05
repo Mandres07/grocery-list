@@ -16,7 +16,7 @@ NextAuth uses credentials, encrypted JWT session cookies, Node scrypt password h
 
 Household ownership comes from `Household.ownerId`; every member, including the owner, has a Membership. Roles are derived server-side, never trusted from a form or JWT. Every shared query and write checks verified identity and current membership. Removing a member revokes subsequent access while preserving their account and historical activity. Cross-document writes also validate household-scoped references inside the transaction; model schemas are not foreign-key or permission enforcement.
 
-Verified members manage inventory and shopping. Only the owner manages invitations and removes members. Household rename/delete, member-initiated leaving, ownership transfer, and account deletion are not implemented; owner departure must not be added without an ownership resolution. A user belongs to one household in the current UI/workflow. See [family sharing](family-sharing.md).
+Verified members manage inventory and shopping. Only the owner manages invitations, removes members, and renames the household. Renaming uses the existing transactional access guard to verify the current session, verified account, ownership, and membership before saving the shared name. Household deletion, member-initiated leaving, ownership transfer, and account deletion are not implemented; owner departure must not be added without an ownership resolution. A user belongs to one household in the current UI/workflow. See [family sharing](family-sharing.md).
 
 ## Persistence and integrity
 

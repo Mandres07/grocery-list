@@ -10,6 +10,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { pendingInvitationToken } from "@/lib/households/invitation-context";
 import { getFamilyInvitation } from "@/lib/households/family";
+import { renameHouseholdAction } from "./actions";
 
 export default async function HouseholdPage() {
   const user = await requireSignedInUser();
@@ -47,6 +48,7 @@ export default async function HouseholdPage() {
         <SectionPanel title={household.name} description="Un hogar para organizarse juntos." icon="home">
           <dl><div className="data-pair"><dt>Tu rol</dt><dd>{isOwner ? "Propietario" : "Miembro"}</dd></div><div className="data-pair"><dt>Tu nombre</dt><dd>{user.name}</dd></div></dl>
           <p className="mt-3 text-sm text-muted">Los productos y cambios de existencias se comparten con las personas de este hogar.</p>
+          {isOwner ? <AccountForm action={renameHouseholdAction} embedded repeatable submitLabel="Guardar nombre del hogar" hiddenFields={{ householdId: household._id.toString() }} fields={[{ name: "name", label: "Nombre del hogar", autoComplete: "off", defaultValue: household.name }]} /> : <p className="mt-3 text-sm text-muted">Solo la persona propietaria puede cambiar el nombre del hogar.</p>}
         </SectionPanel>
         <SectionPanel title="Compartir en familia" description={isOwner ? "Invita a otras personas y gestiona quién forma parte de tu hogar." : "Ya formas parte de este hogar. La persona propietaria gestiona las invitaciones y los miembros."} icon="users">
           {isOwner ? <Link href="/family" className="action-secondary">Gestionar mi familia</Link> : <Link href="/inventory" className="action-secondary">Ver productos compartidos</Link>}

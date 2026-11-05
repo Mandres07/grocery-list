@@ -7,6 +7,7 @@ import { requireProductInHousehold, validateCategoryParent } from "@/lib/invento
 import { authenticateAccount, registerAccount, requestAccountEmail, resetAccountPassword, tokenHash, verifyAccountEmail } from "@/lib/auth/accounts";
 import { DEFAULT_CATEGORY_NAMES, ensureDefaultCategories } from "@/lib/inventory/default-categories";
 import { createHousehold } from "@/lib/households/create";
+import { renameHousehold } from "@/lib/households/update";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { sendAccountEmail, sendInvitationEmail } from "@/lib/email/account-email";
 import { acceptFamilyInvitation, getFamilyInvitation, inviteFamilyMember, removeFamilyMember, revokeFamilyInvitation, type FamilyActor } from "@/lib/households/family";
@@ -66,6 +67,44 @@ describe("family invitation and permission workflows", () => {
   beforeEach(async () => {
     owner = await person();
     home = await createHousehold(owner.id, 0, "Hogar familiar");
+  });
+
+  it("renames the existing home, trims names, preserves shared data, and supports repeated saves", async () => {
+    const product = await Product.create({ householdId: home, name: "Arroz" });
+    const recipient = await person();
+    await inviteFamilyMember(owner, home, recipient.email);
+    const token = deliveredToken(recipient.email);
+    await renameHousehold(owner, home, "  Casa nueva  ");
+    expect(await Household.findById(home)).toMatchObject({ name: "Casa nueva" });
+    expect(await getFamilyInvitation(token)).toMatchObject({ householdName: "Casa nueva", status: "pending" });
+    expect(await Product.exists({ _id: product._id, householdId: home })).not.toBeNull();
+    expect(await Membership.countDocuments({ householdId: home, userId: owner.id })).toBe(1);
+    await renameHousehold(owner, home, "Casa nueva");
+    await renameHousehold(owner, home, "a".repeat(100));
+    expect((await Household.findById(home))!.name).toHaveLength(100);
+  });
+
+  it.each([null, 123, "", "   ", "a".repeat(101)])("rejects invalid household name %j without changing the home", async (name) => {
+    await expect(renameHousehold(owner, home, name)).rejects.toThrow("1 a 100");
+    expect((await Household.findById(home))!.name).toBe("Hogar familiar");
+  });
+
+  it("limits renaming to the verified current owner with membership in the target home", async () => {
+    const member = await person();
+    const outsider = await person();
+    await Membership.create({ householdId: home, userId: member.id });
+    const otherHome = await createHousehold(outsider.id, 0, "Otro hogar");
+    await expect(renameHousehold(member, home, "No permitido")).rejects.toThrow("permiso");
+    await expect(renameHousehold(outsider, home, "No permitido")).rejects.toThrow("permiso");
+    await expect(renameHousehold(owner, otherHome, "No permitido")).rejects.toThrow("permiso");
+    await expect(renameHousehold({ ...owner, sessionVersion: 99 }, home, "No permitido")).rejects.toThrow("Inicia sesión");
+    await User.updateOne({ _id: owner.id }, { emailVerifiedAt: null });
+    await expect(renameHousehold(owner, home, "No permitido")).rejects.toThrow("Inicia sesión");
+    await User.updateOne({ _id: owner.id }, { emailVerifiedAt: new Date() });
+    await Membership.deleteOne({ userId: owner.id, householdId: home });
+    await expect(renameHousehold(owner, home, "No permitido")).rejects.toThrow("permiso");
+    expect((await Household.findById(home))!.name).toBe("Hogar familiar");
+    expect((await Household.findById(otherHome))!.name).toBe("Otro hogar");
   });
 
   it("invites someone without an account and stores only a hash", async () => {

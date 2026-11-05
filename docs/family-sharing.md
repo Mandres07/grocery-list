@@ -18,6 +18,10 @@ Los enlaces locales apuntan al Mac configurado en `NEXTAUTH_URL`. El `localhost`
 
 ## Seguridad y concurrencia
 
+Desde **Mi hogar**, la persona propietaria puede editar **Nombre del hogar** y pulsar **Guardar nombre del hogar**. Se conserva el mismo hogar con sus productos, miembros e invitaciones. Se eliminan espacios al principio y al final y se admiten de 1 a 100 caracteres. Los miembros ven el nombre compartido al actualizar o navegar, pero no pueden editarlo. Las invitaciones abiertas consultan el nombre actual; los correos ya enviados conservan el texto original.
+
+Para revisar el cambio, guarda un nombre nuevo y recarga la página; comprueba también el nombre en **Gestionar mi familia** y desde una cuenta miembro. Un nombre vacío o de más de 100 caracteres debe rechazarse. El formulario permite guardar más de una vez y muestra confirmación o error sin abandonar la página.
+
 - Las acciones obtienen identidad y versión de sesión en el servidor. Los identificadores de formulario no conceden acceso. Cada transacción vuelve a comprobar cuenta verificada, versión, propiedad y membresía.
 - El documento del hogar serializa los cambios de acceso; el documento de usuario serializa aceptación y creación de hogares. No se puede aceptar en dos hogares simultáneamente.
 - Las invitaciones guardan solo el hash del token y comprueban vencimiento al aceptar. Las visitas GET y escáneres de correo no consumen enlaces.

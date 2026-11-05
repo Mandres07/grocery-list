@@ -56,4 +56,6 @@ Review: both household members complete the normal inventory/shopping workflow o
 
 ## Deferred scope
 
-Protected hosted previews require renewed user authorization and branch-scoped credentials/domain configuration. Google sign-in is optional and not enabled. Household rename/delete, member-initiated leaving, ownership transfer, account deletion, and multiple-household navigation require explicit design/authorization before implementation. Barcode scanning, photos, expiration dates, fractional quantities, offline writes, advanced reporting, and push notifications remain later scope.
+Household rename was authorized as a focused follow-up on 2026-11-05: the verified owner can edit the shared name from **Mi hogar**, with server-side ownership/membership checks and the existing 1–100 character limit. This does not start milestone 9.
+
+Protected hosted previews require renewed user authorization and branch-scoped credentials/domain configuration. Google sign-in is optional and not enabled. Household deletion, member-initiated leaving, ownership transfer, account deletion, and multiple-household navigation require explicit design/authorization before implementation. Barcode scanning, photos, expiration dates, fractional quantities, offline writes, advanced reporting, and push notifications remain later scope.
