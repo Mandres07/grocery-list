@@ -11,3 +11,10 @@ next-env.d.ts
 .vercel/
 *.log
 .local/
+
+# Machine-local design hooks and review history.
+/.codex/hooks.json
+/.impeccable/config.local.json
+/.impeccable/critique/
+/.impeccable/live/*
+!/.impeccable/live/config.json

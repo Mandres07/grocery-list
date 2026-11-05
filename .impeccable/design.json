@@ -1,0 +1,451 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-05T14:51:55.146057+00:00",
+  "title": "Design System: Lista de Compras",
+  "extensions": {
+    "colorMeta": {
+      "background": {
+        "role": "neutral",
+        "displayName": "Fondo vegetal claro",
+        "tonalRamp": [
+          "oklch(0.150 0.00202 117.92)",
+          "oklch(0.250 0.00337 117.92)",
+          "oklch(0.350 0.00471 117.92)",
+          "oklch(0.470 0.00538 117.92)",
+          "oklch(0.590 0.00538 117.92)",
+          "oklch(0.710 0.00538 117.92)",
+          "oklch(0.830 0.00366 117.92)",
+          "oklch(0.950 0.00108 117.92)"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Blanco de superficie",
+        "tonalRamp": [
+          "oklch(0.150 0.00000 89.88)",
+          "oklch(0.250 0.00000 89.88)",
+          "oklch(0.350 0.00000 89.88)",
+          "oklch(0.470 0.00000 89.88)",
+          "oklch(0.590 0.00000 89.88)",
+          "oklch(0.710 0.00000 89.88)",
+          "oklch(0.830 0.00000 89.88)",
+          "oklch(0.950 0.00000 89.88)"
+        ]
+      },
+      "foreground": {
+        "role": "neutral",
+        "displayName": "Tinta bosque",
+        "tonalRamp": [
+          "oklch(0.150 0.01358 163.68)",
+          "oklch(0.250 0.02263 163.68)",
+          "oklch(0.350 0.03168 163.68)",
+          "oklch(0.470 0.03620 163.68)",
+          "oklch(0.590 0.03620 163.68)",
+          "oklch(0.710 0.03620 163.68)",
+          "oklch(0.830 0.02462 163.68)",
+          "oklch(0.950 0.00724 163.68)"
+        ]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Gris salvia",
+        "tonalRamp": [
+          "oklch(0.150 0.00860 154.45)",
+          "oklch(0.250 0.01434 154.45)",
+          "oklch(0.350 0.02008 154.45)",
+          "oklch(0.470 0.02295 154.45)",
+          "oklch(0.590 0.02295 154.45)",
+          "oklch(0.710 0.02295 154.45)",
+          "oklch(0.830 0.01560 154.45)",
+          "oklch(0.950 0.00459 154.45)"
+        ]
+      },
+      "brand": {
+        "role": "primary",
+        "displayName": "Verde bosque",
+        "tonalRamp": [
+          "oklch(0.150 0.02389 158.34)",
+          "oklch(0.250 0.03982 158.34)",
+          "oklch(0.350 0.05575 158.34)",
+          "oklch(0.470 0.06371 158.34)",
+          "oklch(0.590 0.06371 158.34)",
+          "oklch(0.710 0.06371 158.34)",
+          "oklch(0.830 0.04333 158.34)",
+          "oklch(0.950 0.01274 158.34)"
+        ]
+      },
+      "brand-hover": {
+        "role": "primary",
+        "displayName": "Verde bosque profundo",
+        "tonalRamp": [
+          "oklch(0.150 0.02090 156.66)",
+          "oklch(0.250 0.03483 156.66)",
+          "oklch(0.350 0.04877 156.66)",
+          "oklch(0.470 0.05573 156.66)",
+          "oklch(0.590 0.05573 156.66)",
+          "oklch(0.710 0.05573 156.66)",
+          "oklch(0.830 0.03790 156.66)",
+          "oklch(0.950 0.01115 156.66)"
+        ]
+      },
+      "sage": {
+        "role": "primary",
+        "displayName": "Salvia",
+        "tonalRamp": [
+          "oklch(0.150 0.00489 130.78)",
+          "oklch(0.250 0.00815 130.78)",
+          "oklch(0.350 0.01141 130.78)",
+          "oklch(0.470 0.01304 130.78)",
+          "oklch(0.590 0.01304 130.78)",
+          "oklch(0.710 0.01304 130.78)",
+          "oklch(0.830 0.00887 130.78)",
+          "oklch(0.950 0.00261 130.78)"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Línea vegetal",
+        "tonalRamp": [
+          "oklch(0.150 0.00556 132.48)",
+          "oklch(0.250 0.00926 132.48)",
+          "oklch(0.350 0.01296 132.48)",
+          "oklch(0.470 0.01482 132.48)",
+          "oklch(0.590 0.01482 132.48)",
+          "oklch(0.710 0.01482 132.48)",
+          "oklch(0.830 0.01007 132.48)",
+          "oklch(0.950 0.00296 132.48)"
+        ]
+      },
+      "warning": {
+        "role": "secondary",
+        "displayName": "Ámbar tostado",
+        "tonalRamp": [
+          "oklch(0.150 0.03501 56.17)",
+          "oklch(0.250 0.05836 56.17)",
+          "oklch(0.350 0.08170 56.17)",
+          "oklch(0.470 0.09337 56.17)",
+          "oklch(0.590 0.09337 56.17)",
+          "oklch(0.710 0.09337 56.17)",
+          "oklch(0.830 0.06349 56.17)",
+          "oklch(0.950 0.01867 56.17)"
+        ]
+      },
+      "accent-soft": {
+        "role": "secondary",
+        "displayName": "Melocotón suave",
+        "tonalRamp": [
+          "oklch(0.150 0.00943 69.43)",
+          "oklch(0.250 0.01571 69.43)",
+          "oklch(0.350 0.02199 69.43)",
+          "oklch(0.470 0.02514 69.43)",
+          "oklch(0.590 0.02514 69.43)",
+          "oklch(0.710 0.02514 69.43)",
+          "oklch(0.830 0.01709 69.43)",
+          "oklch(0.950 0.00503 69.43)"
+        ]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Terracota",
+        "tonalRamp": [
+          "oklch(0.150 0.04364 36.96)",
+          "oklch(0.250 0.07274 36.96)",
+          "oklch(0.350 0.10183 36.96)",
+          "oklch(0.470 0.11638 36.96)",
+          "oklch(0.590 0.11638 36.96)",
+          "oklch(0.710 0.11638 36.96)",
+          "oklch(0.830 0.07914 36.96)",
+          "oklch(0.950 0.02328 36.96)"
+        ]
+      },
+      "warning-soft": {
+        "role": "secondary",
+        "displayName": "Crema ámbar",
+        "tonalRamp": [
+          "oklch(0.150 0.01503 83.13)",
+          "oklch(0.250 0.02505 83.13)",
+          "oklch(0.350 0.03506 83.13)",
+          "oklch(0.470 0.04007 83.13)",
+          "oklch(0.590 0.04007 83.13)",
+          "oklch(0.710 0.04007 83.13)",
+          "oklch(0.830 0.02725 83.13)",
+          "oklch(0.950 0.00801 83.13)"
+        ]
+      },
+      "overlay": {
+        "role": "neutral",
+        "displayName": "Velo bosque",
+        "tonalRamp": [
+          "oklch(0.150 0.01160 168.09)",
+          "oklch(0.250 0.01934 168.09)",
+          "oklch(0.350 0.02707 168.09)",
+          "oklch(0.470 0.03094 168.09)",
+          "oklch(0.590 0.03094 168.09)",
+          "oklch(0.710 0.03094 168.09)",
+          "oklch(0.830 0.02104 168.09)",
+          "oklch(0.950 0.00619 168.09)"
+        ]
+      },
+      "surface-muted": {
+        "role": "neutral",
+        "displayName": "Blanco vegetal",
+        "tonalRamp": [
+          "oklch(0.150 0.00213 128.52)",
+          "oklch(0.250 0.00354 128.52)",
+          "oklch(0.350 0.00496 128.52)",
+          "oklch(0.470 0.00567 128.52)",
+          "oklch(0.590 0.00567 128.52)",
+          "oklch(0.710 0.00567 128.52)",
+          "oklch(0.830 0.00386 128.52)",
+          "oklch(0.950 0.00113 128.52)"
+        ]
+      },
+      "inverse-line": {
+        "role": "neutral",
+        "displayName": "Línea inversa",
+        "tonalRamp": [
+          "oklch(0.150 0.00000 89.88)",
+          "oklch(0.250 0.00000 89.88)",
+          "oklch(0.350 0.00000 89.88)",
+          "oklch(0.470 0.00000 89.88)",
+          "oklch(0.590 0.00000 89.88)",
+          "oklch(0.710 0.00000 89.88)",
+          "oklch(0.830 0.00000 89.88)",
+          "oklch(0.950 0.00000 89.88)"
+        ]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "Línea de control",
+        "tonalRamp": [
+          "oklch(0.150 0.00903 149.50)",
+          "oklch(0.250 0.01505 149.50)",
+          "oklch(0.350 0.02106 149.50)",
+          "oklch(0.470 0.02407 149.50)",
+          "oklch(0.590 0.02407 149.50)",
+          "oklch(0.710 0.02407 149.50)",
+          "oklch(0.830 0.01637 149.50)",
+          "oklch(0.950 0.00481 149.50)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "display",
+        "purpose": "Bienvenida móvil."
+      },
+      "display-wide": {
+        "displayName": "display-wide",
+        "purpose": "Bienvenida de escritorio."
+      },
+      "headline": {
+        "displayName": "headline",
+        "purpose": "Títulos de página."
+      },
+      "title": {
+        "displayName": "title",
+        "purpose": "Secciones compactas."
+      },
+      "body": {
+        "displayName": "body",
+        "purpose": "Lectura y entrada."
+      },
+      "label": {
+        "displayName": "label",
+        "purpose": "Controles y navegación."
+      },
+      "caption": {
+        "displayName": "caption",
+        "purpose": "Ayudas y metadatos."
+      }
+    },
+    "shadows": [
+      {
+        "name": "panel",
+        "value": "0 2px 8px #20382d05, 0 1px 2px #20382d04",
+        "purpose": "Paneles y colecciones."
+      },
+      {
+        "name": "navigation",
+        "value": "0 2px 12px #20382d0d",
+        "purpose": "Encabezado sticky."
+      },
+      {
+        "name": "dialog",
+        "value": "0 24px 80px #102c2433",
+        "purpose": "Diálogos."
+      },
+      {
+        "name": "action",
+        "value": "0 2px 4px #163d2626",
+        "purpose": "Acción principal."
+      }
+    ],
+    "motion": [
+      {
+        "name": "duration-dialog",
+        "value": "220ms",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      },
+      {
+        "name": "duration-menu",
+        "value": "160ms",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      },
+      {
+        "name": "distance-dialog",
+        "value": "12px",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      },
+      {
+        "name": "distance-menu",
+        "value": "6px",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      },
+      {
+        "name": "easing",
+        "value": "cubic-bezier(0.2, 0.8, 0.2, 1)",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      },
+      {
+        "name": "angle-cross",
+        "value": "45deg",
+        "purpose": "Movimiento compartido de superposiciones e iconos; respetar movimiento reducido."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button / primary",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Variante existente de acción primary.",
+      "html": "<button type=\"button\" class=\"ds-button-primary\">Guardar cambios</button>",
+      "css": ".ds-button-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--size-touch,44px);padding:0 16px;border-radius:var(--size-radius-button,8px);font:600 14px/20px var(--font-family-sans,system-ui);cursor:pointer;transition:background-color .15s;border:0;background:var(--brand,#2f5b43);color:var(--surface,#fff);box-shadow:var(--shadow-action);}.ds-button-primary:hover{background:var(--brand-hover,#244833)}.ds-button-primary:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-button-primary:disabled{opacity:.6;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-primary{transition:none}}"
+    },
+    {
+      "name": "Button / secondary",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Variante existente de acción secondary.",
+      "html": "<button type=\"button\" class=\"ds-button-secondary\">Guardar cambios</button>",
+      "css": ".ds-button-secondary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--size-touch,44px);padding:0 16px;border-radius:var(--size-radius-button,8px);font:600 14px/20px var(--font-family-sans,system-ui);cursor:pointer;transition:background-color .15s;border:1px solid var(--line,#e1e7dd);background:var(--surface,#fff);color:var(--foreground,#20382d);box-shadow:var(--shadow-panel);}.ds-button-secondary:hover{background:var(--sage,#edf2e9)}.ds-button-secondary:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-button-secondary:disabled{opacity:.6;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-secondary{transition:none}}"
+    },
+    {
+      "name": "Button / quiet",
+      "kind": "button",
+      "refersTo": "button-quiet",
+      "description": "Variante existente de acción quiet.",
+      "html": "<button type=\"button\" class=\"ds-button-quiet\">Guardar cambios</button>",
+      "css": ".ds-button-quiet{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:var(--size-touch,44px);padding:0 16px;border-radius:var(--size-radius-button,8px);font:600 14px/20px var(--font-family-sans,system-ui);cursor:pointer;transition:background-color .15s;border:0;background:transparent;color:var(--foreground,#20382d);}.ds-button-quiet:hover{background:var(--sage,#edf2e9)}.ds-button-quiet:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-button-quiet:disabled{opacity:.6;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-button-quiet{transition:none}}"
+    },
+    {
+      "name": "Text field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Campo nativo con etiqueta visible.",
+      "html": "<label class=\"ds-field\">Nombre<input class=\"ds-input\" type=\"text\" placeholder=\"Nombre del producto\"></label>",
+      "css": ".ds-field{display:block;font:600 14px/20px var(--font-family-sans,system-ui);color:var(--foreground,#20382d)}.ds-input{display:block;margin-top:4px;min-height:var(--size-touch,44px);width:calc(100% - 26px);padding:0 var(--size-control-padding,12px);border:1px solid var(--control-line,#7e8c80);border-radius:var(--size-radius-control,8px);background:var(--surface-muted,#f7f9f5);color:var(--foreground,#20382d);font:400 16px/24px var(--font-family-sans,system-ui)}.ds-input:focus{background:var(--surface,#fff)}.ds-input:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-input:disabled{cursor:not-allowed}"
+    },
+    {
+      "name": "Section navigation",
+      "kind": "nav",
+      "refersTo": "section-navigation",
+      "description": "Tira horizontal con selección visible.",
+      "html": "<nav class=\"ds-nav\" aria-label=\"Inventario\"><a class=\"ds-tab\" href=\"#productos\" aria-current=\"page\">Productos</a><a class=\"ds-tab\" href=\"#categorias\">Categorías</a><a class=\"ds-tab\" href=\"#actividad\">Actividad</a></nav>",
+      "css": ".ds-nav{display:inline-flex;max-width:100%;gap:4px;overflow-x:auto;padding:var(--size-space-2xs,4px);border:1px solid var(--line,#e1e7dd);border-radius:var(--size-radius-control,8px);background:var(--sage,#edf2e9)}.ds-tab{display:inline-flex;align-items:center;flex-shrink:0;min-height:var(--size-touch,44px);padding:0 12px;border-radius:var(--size-radius-button,8px);color:var(--muted,#606e64);font:500 14px/20px var(--font-family-sans,system-ui);text-decoration:none}.ds-tab:hover{color:var(--brand,#2f5b43)}.ds-tab[aria-current]{color:var(--brand,#2f5b43);background:var(--surface,#fff);font-weight:600;box-shadow:var(--shadow-panel)}.ds-tab:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}"
+    },
+    {
+      "name": "Stock warning",
+      "kind": "chip",
+      "refersTo": "status-warning",
+      "description": "Etiqueta informativa de poco stock; no es un control.",
+      "html": "<span class=\"ds-status\">Poco stock</span>",
+      "css": ".ds-status{display:inline-flex;padding:0 8px;border-radius:var(--size-radius-control,8px);background:var(--warning-soft,#fff0d4);color:var(--warning,#885126);font:600 12px/20px var(--font-family-sans,system-ui)}"
+    },
+    {
+      "name": "Form panel",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Superficie independiente con una sola envolvente.",
+      "html": "<section class=\"ds-card\" aria-labelledby=\"ds-card-title\"><h2 id=\"ds-card-title\" class=\"ds-title\">Mi hogar</h2><p class=\"ds-description\">Un hogar. Un equipo.</p></section>",
+      "css": ".ds-card{padding:var(--size-panel-padding,24px);border:1px solid var(--line,#e1e7dd);border-radius:var(--size-radius-panel,12px);background:var(--surface,#fff);color:var(--foreground,#20382d);box-shadow:var(--shadow-panel);font-family:var(--font-family-sans,system-ui)}.ds-title{margin:0;font-size:16px;line-height:24px;font-weight:700}.ds-description{margin:4px 0 0;color:var(--muted,#606e64);font-size:14px;line-height:20px}"
+    },
+    {
+      "name": "Compact quantity control",
+      "kind": "custom",
+      "description": "Vista estática del stepper compacto; la lógica permanece en QuantityInput.",
+      "html": "<div class=\"ds-stepper\" role=\"group\" aria-label=\"Ajustar cantidad de producto\"><button type=\"button\" aria-label=\"Restar una unidad de producto\">−</button><input type=\"number\" value=\"2\" min=\"1\" step=\"1\" aria-label=\"Cantidad de producto\"><button type=\"button\" aria-label=\"Sumar una unidad de producto\">+</button></div>",
+      "css": ".ds-stepper{display:inline-flex;align-items:center;border:1px solid var(--control-line,#7e8c80);border-radius:var(--size-radius-control,8px);background:var(--surface-muted,#f7f9f5)}.ds-stepper button{border:0;background:transparent;color:var(--brand,#2f5b43);min-width:var(--size-control-compact,32px);min-height:var(--size-control-compact,32px);border-radius:var(--size-radius-button,8px);font:600 20px/28px var(--font-family-sans,system-ui);cursor:pointer}.ds-stepper button:hover{background:var(--sage,#edf2e9)}.ds-stepper input{appearance:textfield;border:0;background:transparent;width:var(--size-quantity-entry-compact,44px);min-height:var(--size-control-compact,32px);padding:0 8px;text-align:center;color:var(--foreground,#20382d);font:600 16px/24px var(--font-family-sans,system-ui);font-variant-numeric:tabular-nums}.ds-stepper input::-webkit-inner-spin-button,.ds-stepper input::-webkit-outer-spin-button{appearance:none}.ds-stepper button:focus-visible,.ds-stepper input:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-stepper button:disabled,.ds-stepper input:disabled{opacity:.6;cursor:not-allowed}"
+    },
+    {
+      "name": "Native select",
+      "kind": "input",
+      "refersTo": "select-control",
+      "description": "Select nativo con flecha centrada y margen al extremo final; mantiene el selector y teclado del navegador.",
+      "html": "<div><label class=\"ds-select-label\" for=\"ds-select\">Categoría</label><span class=\"ds-select-wrap\"><select class=\"ds-select\" id=\"ds-select\" name=\"category\"><option value=\"\">Sin categoría</option><option value=\"pantry\">Despensa</option></select><svg class=\"ds-select-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"m6 9 6 6 6-6\"/></svg></span></div>",
+      "css": ".ds-select-label{display:block;margin-bottom:4px;color:var(--foreground,#20382d);font:600 14px/20px var(--font-family-sans,system-ui)}.ds-select-wrap{position:relative;display:block}.ds-select{appearance:none;width:100%;min-height:var(--size-touch,44px);padding-inline:var(--size-control-padding,12px);padding-inline-end:calc(2 * var(--size-control-padding,12px) + var(--size-brand-icon,20px));border:1px solid var(--control-line,#7e8c80);border-radius:var(--size-radius-control,8px);background:var(--surface-muted,#f7f9f5);color:var(--foreground,#20382d);font:400 16px/24px var(--font-family-sans,system-ui);cursor:pointer}.ds-select:focus{background:var(--surface,#fff)}.ds-select:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-select:disabled{cursor:not-allowed}.ds-select-icon{position:absolute;inset-inline-end:var(--size-control-padding,12px);top:50%;translate:0 -50%;pointer-events:none;color:var(--foreground,#20382d);width:var(--size-brand-icon,20px);height:var(--size-brand-icon,20px)}.ds-select-wrap:has(select:disabled) .ds-select-icon{opacity:.6}@media(forced-colors:active){.ds-select{appearance:auto;padding-inline-end:var(--size-control-padding,12px)}.ds-select-icon{display:none}}"
+    },
+    {
+      "name": "Mobile sign-out row",
+      "kind": "button",
+      "refersTo": "sign-out-menu",
+      "description": "Acción de salida alineada con los enlaces del menú móvil; el escritorio conserva su tratamiento inverso.",
+      "html": "<button type=\"button\" class=\"ds-sign-out\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><path d=\"M9 5H5v14h4M15 8l4 4-4 4M9 12h10\"/></svg>Cerrar sesión</button>",
+      "css": ".ds-sign-out{display:flex;align-items:center;gap:12px;width:100%;min-height:var(--size-touch,44px);padding:0 12px;border:0;border-radius:var(--size-radius-control,8px);background:transparent;color:var(--accent,#a14e36);font:400 14px/20px var(--font-family-sans,system-ui);cursor:pointer;transition:background-color .15s}.ds-sign-out svg{width:var(--size-brand-icon,20px);height:var(--size-brand-icon,20px);flex-shrink:0}.ds-sign-out:hover{background:var(--accent-soft,#f7e9da)}.ds-sign-out:focus-visible{outline:var(--size-focus-width,3px) solid var(--brand,#2f5b43);outline-offset:var(--size-focus-offset,3px);}.ds-sign-out:disabled{opacity:.6;cursor:not-allowed}@media(prefers-reduced-motion:reduce){.ds-sign-out{transition:none}}"
+    }
+  ],
+  "narrative": {
+    "northStar": "La despensa compartida",
+    "overview": "Un sistema cálido y familiar que convierte el orden cotidiano en una experiencia sencilla. El verde bosque da continuidad a la marca y a las acciones; la salvia suaviza agrupaciones y estados; la terracota aporta pequeños detalles de cercanía. Manrope mantiene una voz común entre bienvenida, formularios y listas.\n\nLos controles son sencillos y amables. La densidad compacta permite comparar productos y actuar sin perder contexto. Las capas discretas separan contenido y superposiciones mediante fondos, bordes y sombras suaves, reservando mayor profundidad para los diálogos.",
+    "keyCharacteristics": [
+      "Verde bosque para marca, navegación y acciones principales.",
+      "Tipografía Manrope y jerarquía por tamaño y peso.",
+      "Colecciones compactas con separadores y cantidades alineadas.",
+      "Capas discretas y esquinas suavemente cuadradas."
+    ],
+    "rules": [
+      {
+        "name": "The Green Action Rule",
+        "body": "Las acciones principales y los grandes énfasis usan verde. La terracota se reserva para detalles pequeños, etiquetas y marcadores de estado.",
+        "section": "colors"
+      },
+      {
+        "name": "The Text Status Rule",
+        "body": "Los estados incluyen texto explícito; el color y los marcadores solo lo refuerzan.",
+        "section": "colors"
+      },
+      {
+        "name": "The Single Surface Rule",
+        "body": "Cada grupo editable tiene una sola superficie. Un formulario dentro de una tarjeta o diálogo no añade otra tarjeta.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do reutilizar componentes, tokens y estilos compartidos para mantener la misma densidad entre colecciones.",
+      "Do mantener foco visible, etiquetas explícitas y nombres accesibles completos aunque el texto se limite visualmente.",
+      "Do mantener cantidades y acciones junto a la identidad del registro, centradas verticalmente.",
+      "Do respetar movimiento reducido y el comportamiento nativo de diálogos, detalles y enlaces."
+    ],
+    "donts": [
+      "Don't usar terracota para botones principales, titulares grandes o grandes superficies.",
+      "Don't reducir todos los controles a la variante compacta: su excepción pertenece a registros y steppers existentes.",
+      "Don't anidar tarjetas de formulario dentro de otra superficie que ya delimita el contenido.",
+      "Don't comunicar estados únicamente con color ni reservar espacio visible para mensajes vacíos."
+    ]
+  }
+}
