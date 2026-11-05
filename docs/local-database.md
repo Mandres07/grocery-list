@@ -31,6 +31,14 @@ Shutdown preserves the named volume. Do not add `-v` unless intentionally deleti
 
 ## Native MongoDB
 
+For the existing initialized database on this workstation, run both services with:
+
+```bash
+npm run dev:local
+```
+
+This reuses a running `grocery-rs` replica on port 27018 or starts native `mongod` in the background using the existing `.local/mongo` directory. Logs append to `.local/mongo.log`. It waits for a writable primary before running `npm run dev` on port 3001. Ctrl+C stops the app; MongoDB stays running to preserve the shared development instance. A missing data directory or uninitialized replica is reported instead of silently creating replacement storage. The command requires native `mongod`; it does not start Docker.
+
 This workstation has `mongod`, `mongosh`, `mongodump`, and `mongorestore`. On a new machine, install MongoDB Community Server, mongosh, and MongoDB Database Tools first. From the repository, reopen the existing database in a terminal:
 
 ```bash

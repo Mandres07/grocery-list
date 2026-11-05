@@ -56,6 +56,8 @@ npm run db:up
 
 For this workstation's existing native database, start `mongod` using its saved `.local/mongo` directory as documented in that guide. Do not replace it with an empty test database or run Docker on the same port. The app database is `grocery_list`, replica set `grocery-rs`, port **27018**.
 
+To start the saved native database and the app together, use `npm run dev:local`. It reuses an already-running replica, otherwise starts `mongod` with `.local/mongo`, and waits for a writable primary before running `npm run dev`. MongoDB keeps running when you stop the app with Ctrl+C. Native MongoDB must be installed and the saved replica must already be initialized; see the local database guide for first-time setup.
+
 ### 👤 Configure accounts and email
 
 Edit the ignored `.env.local` using [Accounts and email](docs/accounts.md): generate a unique `NEXTAUTH_SECRET` and set this app's Resend Sending key. The approved sender is `Lista de Compras <no-reply@updates.finalscore.win>`. Never copy Scorecast credentials. Local development requires no Atlas or Vercel credentials.
@@ -107,6 +109,7 @@ Each member has their own account. Verified household members manage inventory a
 | Command | Purpose |
 | --- | --- |
 | `npm run dev` | Start local development on port 3001 |
+| `npm run dev:local` | Start/reuse saved native MongoDB, then start local development |
 | `npm run check` | Lint, type checking, unit tests, and production build |
 | `npm test` / `npm run test:watch` | Database-independent tests / watch mode |
 | `npm run db:up` / `npm run db:down` | Start/stop the Docker replica set, retaining its data |

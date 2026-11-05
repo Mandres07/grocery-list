@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack -p 3001",
+    "dev:local": "node scripts/start-local-mongo.mjs && npm run dev",
     "build": "next build --webpack",
     "start": "next start -p 3001",
     "lint": "eslint .",
