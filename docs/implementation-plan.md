@@ -119,6 +119,8 @@ Review: confirm hosted development/test connectivity and recover a disposable ba
 
 ## Milestone 8 — Hosting and production email
 
+Status: in progress. Vercel Hobby import/configuration is being guided for `lista-de-compras`; production-only private environment values are generated locally, and the hosted app remains pending. Security updates and a scoped lint dependency fix resolve the deployment audit findings. Node 22 and iad1 are pinned; preview will use its own branch-scoped credentials, secret, and stable URL. See `docs/deployment.md` for setup and the required hosted authentication/email/sharing review. No local household data has been migrated and milestone 9 has not started.
+
 - Import GitHub repository into Vercel and configure separate preview/production environments.
 - Set database, session, email, and optional OAuth credentials; use unique secrets.
 - Set stable application URL, configure email links and OAuth callbacks, and redeploy.

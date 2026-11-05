@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { registerAction } from "@/app/(account)/actions";
 import { PasswordField } from "./password-field";
 import { FormField } from "@/components/ui/form-field";
 
 export function RegistrationForm() {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -19,7 +21,7 @@ export function RegistrationForm() {
       const result = await registerAction({ success: false, message: "" }, data);
       if (!result.success) { setMessage(result.message); return; }
       const login = await signIn("credentials", { email: data.get("email"), password: data.get("password"), redirect: false, callbackUrl: "/inventory" });
-      if (login?.ok && !login.error) window.location.assign("/inventory");
+      if (login?.ok && !login.error) { router.replace("/inventory"); router.refresh(); }
       else setMessage("No pudimos iniciar la sesión automáticamente. Si ya tienes una cuenta, inicia sesión con tu contraseña o recupera tu acceso.");
     } catch {
       setMessage("No pudimos conectar. Intenta de nuevo o inicia sesión si tu cuenta ya se creó.");

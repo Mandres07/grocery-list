@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { PasswordField } from "./password-field";
 import { FormField } from "@/components/ui/form-field";
 import { signIn, signOut } from "next-auth/react";
 
 export function SignInForm() {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -20,7 +22,8 @@ export function SignInForm() {
       if (!result?.ok || result.error) {
         setMessage("No pudimos iniciar sesión. Revisa tus datos o espera unos minutos si ya intentaste varias veces.");
       } else {
-        window.location.assign("/inventory");
+        router.replace("/inventory");
+        router.refresh();
       }
     } catch {
       setMessage("No pudimos conectar. Revisa tu conexión e intenta de nuevo.");

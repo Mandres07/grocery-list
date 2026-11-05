@@ -7,7 +7,7 @@ import { PasswordField } from "@/components/auth/password-field";
 vi.mock("next/font/local", () => ({ default: () => ({ variable: "font-manrope" }) }));
 vi.mock("@/lib/auth/session", () => ({ getCurrentUser: vi.fn() }));
 vi.mock("@/app/(account)/actions", () => ({ registerAction: vi.fn() }));
-vi.mock("next/navigation", () => ({ usePathname: () => "/", unstable_rethrow: vi.fn(), redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); }) }));
+vi.mock("next/navigation", () => ({ usePathname: () => "/", useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }), unstable_rethrow: vi.fn(), redirect: vi.fn((path: string) => { throw new Error(`REDIRECT:${path}`); }) }));
 
 import RootLayout from "@/app/layout";
 import AuthLayout from "@/app/(auth)/layout";
