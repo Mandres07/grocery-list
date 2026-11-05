@@ -16,7 +16,13 @@
     "db:check": "vitest run --config vitest.integration.config.ts",
     "tokens": "node scripts/generate-theme.mjs",
     "predev": "npm run tokens",
-    "prebuild": "npm run tokens"
+    "prebuild": "npm run tokens",
+    "db:tools": "node --env-file=.env.atlas.local scripts/run-database-tools.mjs",
+    "db:prepare": "npm run db:tools -- prepare",
+    "db:inspect": "npm run db:tools -- inspect",
+    "db:backup": "npm run db:tools -- backup",
+    "db:restore-test": "npm run db:tools -- restore-test",
+    "db:verify-access": "npm run db:tools -- verify-access"
   },
   "dependencies": {
     "mongoose": "9.7.0",

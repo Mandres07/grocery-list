@@ -4,6 +4,7 @@ out/
 coverage/
 .env*
 !.env.example
+!.env.atlas.example
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store

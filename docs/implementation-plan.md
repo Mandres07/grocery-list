@@ -109,6 +109,8 @@ Review: coordinate a sample shopping trip with both accounts and record received
 
 ## Milestone 7 — Hosted database
 
+Status: complete. Local maintenance tooling and setup/recovery instructions are prepared in `docs/hosted-database.md`; 194 unit tests, 86 disposable-database integration checks (including full export/recovery), lint, TypeScript, and the production build pass. Atlas Free/M0 in AWS us-east-1 is configured in the user’s separate project. Preview and production app users passed hosted index checks and committed transaction/write checks; cross-environment and recovery reads were denied. Maintenance access to production was denied. Hosted preview export/recovery matched full document checksums, counts, and indexes; temporary source diagnostics were removed, and the isolated recovery copy is retained for review. The user confirmed that Atlas offers optional paid backups and that they remain disabled; the tested logical export/isolated recovery workflow is the available backup procedure, with no automatic backup schedule configured. The saved local app database is unchanged; milestone 8 has not started.
+
 - Create a dedicated Atlas project/cluster and isolated production/preview databases.
 - Restricted database users, network access, server-only connection settings, and indexes.
 - Choose a region near hosting and establish a tested export/restore process; verify actual tier backup options.
