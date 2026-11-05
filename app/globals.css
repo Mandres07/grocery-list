@@ -76,10 +76,18 @@ button, a {
   .surface-inverse .brand-mark { background: var(--accent-soft); color: var(--brand); }
   .action-block { width: 100%; }
   .action-reveal { @apply shrink-0 border-l border-line text-xs font-semibold text-brand hover:bg-sage; min-height: var(--size-touch); width: var(--size-reveal-width); border-radius: 0 var(--size-radius-control) var(--size-radius-control) 0; }
-  .control { @apply w-full border border-line bg-surface-muted text-base transition-colors focus:bg-surface; padding-inline: var(--size-control-padding); min-height: var(--size-touch); border-radius: var(--size-radius-control); }
+  .control { @apply w-full border border-control-line bg-surface-muted text-base transition-colors focus:bg-surface; padding-inline: var(--size-control-padding); min-height: var(--size-touch); border-radius: var(--size-radius-control); }
   .control-quantity { @apply shrink-0 px-2 text-center font-semibold tabular-nums; width: var(--size-quantity-entry); }
-  .control-group { @apply flex items-stretch border border-line bg-surface; border-radius: var(--size-radius-control); }
+  .control-group { @apply flex items-stretch border border-control-line bg-surface; border-radius: var(--size-radius-control); }
   .control-group .control { @apply min-w-0 flex-1 border-0 bg-transparent; }
+  .control-select { position: relative; display: block; }
+  .control-select .control { appearance: none; padding-inline-end: calc(2 * var(--size-control-padding) + var(--size-brand-icon)); }
+  .control-select > svg { position: absolute; inset-inline-end: var(--size-control-padding); top: 50%; translate: 0 -50%; pointer-events: none; color: var(--foreground); }
+  .control-select:has(select:disabled) > svg { opacity: 0.6; }
+  @media (forced-colors: active) {
+    .control-select .control { appearance: auto; padding-inline-end: var(--size-control-padding); }
+    .control-select > svg { display: none; }
+  }
   .field-label { @apply mb-1 block text-sm font-semibold; }
   .field-hint { @apply mt-1 text-xs leading-5 text-muted; }
   .stack { @apply flex flex-col; gap: var(--size-space-sm); }
@@ -202,7 +210,7 @@ button, a {
   .record-status { @apply mt-1; }
   .record-actions { @apply max-w-full; flex: 0 1 auto; }
   .record-actions .form-flow { @apply mt-0; }
-  .quantity-controls { width: max-content; align-self: flex-start; @apply inline-flex max-w-full flex-wrap items-center border border-line bg-surface-muted; border-radius: var(--size-radius-control); }
+  .quantity-controls { width: max-content; align-self: flex-start; @apply inline-flex max-w-full flex-wrap items-center border border-control-line bg-surface-muted; border-radius: var(--size-radius-control); }
   .quantity-controls .action-secondary { @apply border-0 bg-transparent px-0 text-brand hover:bg-sage; min-width: var(--size-touch); border-radius: var(--size-radius-button); box-shadow: none; }
   .quantity-controls .quantity-value { @apply text-base; }
   .quantity-controls .control-quantity { @apply border-0 bg-transparent; border-radius: 0; appearance: textfield; }

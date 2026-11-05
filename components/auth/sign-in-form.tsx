@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { PasswordField } from "./password-field";
 import { FormField } from "@/components/ui/form-field";
 import { signIn, signOut } from "next-auth/react";
+import { Icon, type IconName } from "@/components/ui/icon";
 
 export function SignInForm() {
   const router = useRouter();
@@ -40,16 +41,16 @@ export function SignInForm() {
   );
 }
 
-export function SignOutButton({ className = "action-secondary" }: { className?: string }) {
+export function SignOutButton({ className = "action-secondary", icon }: { className?: string; icon?: IconName }) {
   const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState(false);
   return <div>
-    <button disabled={pending} onClick={async () => {
+    <button type="button" disabled={pending} onClick={async () => {
       setPending(true);
       setFailed(false);
       try { await signOut({ callbackUrl: "/sign-in" }); }
       catch { setFailed(true); setPending(false); }
-    }} className={className}>{pending ? "Saliendo…" : "Cerrar sesión"}</button>
+    }} className={className}>{icon && <Icon name={icon} className="glyph-icon" />}{pending ? "Saliendo…" : "Cerrar sesión"}</button>
     {failed && <p role="status" className="mt-2 text-sm text-warning">No pudimos cerrar la sesión. Intenta de nuevo.</p>}
   </div>;
 }

@@ -1,9 +1,11 @@
 import type { SVGProps } from "react";
 import basket from "@/styles/basket.json";
 
-export type IconName = "menu-toggle" | "edit" | "trash" | "history" | "folder" | "user" | "users" | "lock" | "filter" | "plus" | "basket" | "home" | "leaf" | "bottle" | "jar" | "check" | "arrow" | "menu" | "close";
+export type IconName = "menu-toggle" | "edit" | "trash" | "history" | "folder" | "user" | "users" | "lock" | "filter" | "plus" | "basket" | "home" | "leaf" | "bottle" | "jar" | "check" | "arrow" | "menu" | "close" | "chevron-down" | "sign-out";
 
 const paths: Record<IconName, React.ReactNode> = {
+  "chevron-down": <path d="m6 9 6 6 6-6" />,
+  "sign-out": <path d="M9 5H5v14h4M15 8l4 4-4 4M9 12h10" />,
   edit: <><path d="m14 5 5 5M4 20l5-1L20 8a2 2 0 0 0-5-5L4 14v6ZM12 20h8" /></>,
   trash: <><path d="M3 6h18M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7M14 10v7" /></>,
   history: <><path d="M3 11a9 9 0 1 1 3 8M3 4v7h7M12 7v5l3 2" /></>,

@@ -16,8 +16,19 @@ describe("theme text contrast", () => {
     ["foreground", "background"],
     ["background", "brand"],
     ["brand", "accent-soft"],
+    ["muted", "surface"],
+    ["muted", "background"],
+    ["muted", "surface-muted"],
+    ["muted", "sage"],
   ] as const)("keeps %s text readable on %s", (text, background) => {
     const values = [luminance(theme.colors[text]), luminance(theme.colors[background])].sort((a, b) => a - b);
     expect((values[1] + 0.05) / (values[0] + 0.05)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("form control boundary contrast", () => {
+  it.each(["surface", "surface-muted", "background", "sage"] as const)("keeps control boundaries distinguishable on %s", (background) => {
+    const values = [luminance(theme.colors["control-line"]), luminance(theme.colors[background])].sort((a, b) => a - b);
+    expect((values[1] + 0.05) / (values[0] + 0.05)).toBeGreaterThanOrEqual(3);
   });
 });

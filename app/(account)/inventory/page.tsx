@@ -1,3 +1,4 @@
+import { SelectControl } from "@/components/ui/select-control";
 import { inventoryPageContext } from "@/lib/inventory/page-context";
 import { listInventory } from "@/lib/inventory/queries";
 import { categoryLabels } from "@/lib/inventory/categories";
@@ -18,9 +19,9 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const labels = new Map(categoryLabels(categories).map((item) => [item.id, item.label]));
   return <div className="reserve-floating-action"><InventoryShell title="Inventario" description="Organiza los productos de tu hogar y controla sus existencias." active="/inventory" action={<div className="flex items-center gap-2"><ListFilters action="/inventory" label="Buscar producto" placeholder="Nombre del producto" query={query} activeFilters={Boolean(category || lowStock || archived)} key={`${query}:${category}:${lowStock}:${archived}`}>
       <div className="stack">
-        <div><label htmlFor="filter-category" className="field-label">Categoría y subcategorías</label><select id="filter-category" name="category" className="control" defaultValue={category}><option value="">Todas</option>{categoryLabels(categories).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</select></div>
-        <div><label htmlFor="filter-stock" className="field-label">Existencias</label><select id="filter-stock" name="stock" defaultValue={lowStock ? "low" : "all"} className="control"><option value="all">Todas</option><option value="low">Por reponer</option></select></div>
-        <div><label htmlFor="filter-archived" className="field-label">Estado</label><select id="filter-archived" name="archived" defaultValue={archived ? "yes" : "no"} className="control"><option value="no">Activos</option><option value="yes">Archivados</option></select></div>
+        <div><label htmlFor="filter-category" className="field-label">Categoría y subcategorías</label><SelectControl id="filter-category" name="category" defaultValue={category}><option value="">Todas</option>{categoryLabels(categories).map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</SelectControl></div>
+        <div><label htmlFor="filter-stock" className="field-label">Existencias</label><SelectControl id="filter-stock" name="stock" defaultValue={lowStock ? "low" : "all"}><option value="all">Todas</option><option value="low">Por reponer</option></SelectControl></div>
+        <div><label htmlFor="filter-archived" className="field-label">Estado</label><SelectControl id="filter-archived" name="archived" defaultValue={archived ? "yes" : "no"}><option value="no">Activos</option><option value="yes">Archivados</option></SelectControl></div>
       </div>
     </ListFilters><ProductDialog householdId={householdId} categories={categories} /></div>}>
 

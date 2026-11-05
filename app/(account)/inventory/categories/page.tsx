@@ -1,3 +1,4 @@
+import { SelectControl } from "@/components/ui/select-control";
 import { inventoryPageContext } from "@/lib/inventory/page-context";
 import { listInventoryCategories } from "@/lib/inventory/queries";
 import { filterCategories, categoryLabels } from "@/lib/inventory/categories";
@@ -15,10 +16,10 @@ export default async function CategoriesPage({ searchParams }: { searchParams: P
   const parent = requestedParent === "root" || categories.some((category) => category.id === requestedParent) ? requestedParent : "";
   const visibleCategories = filterCategories(categories, query, parent);
   return <div className="reserve-floating-action"><InventoryShell title="Categorías" description="Organiza tus productos con categorías y subcategorías." active="/inventory/categories" action={<div className="flex items-center gap-2"><ListFilters action="/inventory/categories" label="Buscar categoría" placeholder="Nombre de la categoría" query={query} activeFilters={Boolean(parent)} key={`${query}:${parent}`}>
-      <div><label htmlFor="filter-parent" className="field-label">Ubicación</label><select id="filter-parent" name="parent" className="control" defaultValue={parent}>
+      <div><label htmlFor="filter-parent" className="field-label">Ubicación</label><SelectControl id="filter-parent" name="parent" defaultValue={parent}>
         <option value="">Todas</option><option value="root">Solo categorías principales</option>
         {categoryLabels(categories).map((category) => <option key={category.id} value={category.id}>Dentro de {category.label}</option>)}
-      </select></div>
+      </SelectControl></div>
     </ListFilters><CategoryDialog householdId={householdId} categories={categories} /></div>}>
 
     <CategoryManager householdId={householdId} categories={categories} visibleCategories={visibleCategories} />

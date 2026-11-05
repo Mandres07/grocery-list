@@ -28,7 +28,7 @@ export function AppHeader({ user }: { user: { name: string; emailVerified: boole
             <nav aria-label="Mi cuenta" className="popover">
               <p className="mb-2 break-words text-sm font-semibold">{user.name}</p>
               <AccountLinks emailVerified={user.emailVerified} className="navigation-link" />
-              <div className="mt-3 border-t border-line pt-3"><SignOutButton /></div>
+              <div className="mt-3 border-t border-line pt-3"><SignOutButton className="navigation-link w-full text-accent hover:bg-accent-soft disabled:opacity-60" icon="sign-out" /></div>
             </nav>
           </DisclosureMenu>
         </div>
