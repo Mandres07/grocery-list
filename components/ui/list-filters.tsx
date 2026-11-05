@@ -6,8 +6,8 @@ import { Modal } from "./modal";
 import { Icon } from "./icon";
 import { FormField } from "./form-field";
 
-export function ListFilters({ action, label, placeholder, query, activeFilters, children }: {
-  action: string; label: string; placeholder: string; query: string; activeFilters: boolean; children: ReactNode;
+export function ListFilters({ action, label, placeholder, query, activeFilters, children, clearHref = action }: {
+  action: string; label: string; placeholder: string; query: string; activeFilters: boolean; children: ReactNode; clearHref?: string;
 }) {
   const [open, setOpen] = useState(false);
   const active = Boolean(query || activeFilters);
@@ -19,7 +19,7 @@ export function ListFilters({ action, label, placeholder, query, activeFilters, 
       <form action={action} method="get" className="stack form-flow" key={String(open)}>
         <FormField label={label} name="q" type="search" placeholder={placeholder} maxLength={160} defaultValue={query} />
         {children}
-        <div className="flex flex-wrap gap-2"><button className="action-primary">Aplicar filtros</button><Link href={action} className="action-secondary" onClick={() => setOpen(false)}>Limpiar filtros</Link></div>
+        <div className="flex flex-wrap gap-2"><button className="action-primary">Aplicar filtros</button><Link href={clearHref} className="action-secondary" onClick={() => setOpen(false)}>Limpiar filtros</Link></div>
       </form>
     </Modal>
   </>;

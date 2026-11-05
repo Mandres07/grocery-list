@@ -72,6 +72,7 @@ describe("shared application header", () => {
       expect(html).toContain("Page unavailable");
       expect(html).toContain("Iniciar sesión");
       expect(html).not.toContain('href="/inventory"');
+      expect(html).not.toContain('href="/shopping"');
       expect(log).toHaveBeenCalledWith("Header account lookup unavailable");
     } finally { log.mockRestore(); }
   });
@@ -81,6 +82,7 @@ describe("shared application header", () => {
     expect(html).toContain('aria-label="Menú de cuenta"');
     expect(html).toContain('aria-label="Mi cuenta"');
     expect(html).toContain('href="/inventory"');
+    expect(html).toContain('href="/shopping"');
     expect(html).toContain("Cerrar sesión");
     expect(html).not.toContain("Iniciar sesión");
   });
@@ -89,6 +91,7 @@ describe("shared application header", () => {
     const html = renderToStaticMarkup(createElement(AppHeader, { user: { name: "Ana", emailVerified: false } }));
     expect(html).toContain('href="/account"');
     expect(html).not.toContain('href="/inventory"');
+    expect(html).not.toContain('href="/shopping"');
   });
 });
 

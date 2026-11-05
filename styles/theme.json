@@ -55,7 +55,11 @@
     "layer-floating-action": "30",
     "quantity-value": "3ch",
     "measure-settings": "960px",
-    "symbol-small": "32px"
+    "symbol-small": "32px",
+    "quantity-entry": "72px",
+    "control-compact": "32px",
+    "quantity-entry-compact": "44px",
+    "record-content-min": "36px"
   },
   "shadows": {
     "panel": "0 2px 8px #20382d05, 0 1px 2px #20382d04",

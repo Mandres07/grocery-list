@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import mongoose, { Types } from "mongoose";
 import { connectToDatabase, LOCAL_DATABASE_URI } from "@/lib/db";
-import { User, Household, Membership, Invitation, Category, Product, StockMovement, initializeDatabase } from "@/models";
+import { User, Household, Membership, Invitation, Category, Product, StockMovement, ShoppingItem, initializeDatabase } from "@/models";
 import { requireHouseholdAccess } from "@/lib/households/access";
 import { requireProductInHousehold, validateCategoryParent } from "@/lib/inventory/references";
 import { authenticateAccount, registerAccount, requestAccountEmail, resetAccountPassword, tokenHash, verifyAccountEmail } from "@/lib/auth/accounts";
@@ -14,6 +14,8 @@ import { createProduct, editProduct, adjustStock, correctStock, setProductArchiv
 import { getInventoryProduct, listInventory, listInventoryActivity } from "@/lib/inventory/queries";
 import InventoryRequest from "@/models/InventoryRequest";
 import { randomUUID } from "node:crypto";
+import { addShoppingItem, addLowStockToShopping, setShoppingPurchased, editShoppingQuantity, deleteShoppingItem, receiveShoppingItem, receivePurchasedItems } from "@/lib/shopping/mutations";
+import { getShoppingItem, listShoppingItems, shoppingProductOptions } from "@/lib/shopping/queries";
 
 vi.mock("@/lib/email/account-email", async (importOriginal) => ({
   ...await importOriginal<typeof import("@/lib/email/account-email")>(),
@@ -23,6 +25,10 @@ vi.mock("@/lib/email/account-email", async (importOriginal) => ({
 
 // Hard-code the local target and generate our own disposable database name.
 // Never honor an Atlas URI or drop a user-configured database during verification.
+async function purchasedReceiptItems(actor: FamilyActor, householdId: string) {
+  return (await listShoppingItems(actor, householdId, "purchased")).receiptItems;
+}
+
 const databaseName = `grocery_list_verify_${Date.now()}_${process.pid}`;
 const ownerId = new Types.ObjectId();
 const memberId = new Types.ObjectId();
@@ -824,5 +830,254 @@ describe("shared inventory workflows", () => {
     expect((await listInventory(member, home, { query: ".*" })).total).toBe(0);
     expect((await listInventory(member, home, { lowStock: true })).products.map((item) => item.name)).toEqual(["Jabón (manos)"]);
     await expect(listInventory(member, home, { categoryId: new Types.ObjectId().toString() })).rejects.toThrow("no pertenece");
+  });
+
+  it("separates buying from explicit received quantities and traces the receiving member", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, name: "Ignored", unit: "Ignored", quantity: "3" });
+    await setShoppingPurchased(member, home, randomUUID(), item.id, 0, true);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    await receiveShoppingItem(member, home, randomUUID(), item.id, 1, "4");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(6);
+    const received = await ShoppingItem.findById(item.id).lean();
+    expect(received).toMatchObject({ name: "Arroz", unit: "bolsas", quantity: 3, receivedQuantity: 4, status: "received", revision: 2 });
+    expect(await StockMovement.findById(received!.receivedMovementId).lean()).toMatchObject({ delta: 4, quantityBefore: 2, quantityAfter: 6, reason: "receipt", actorId: new Types.ObjectId(member.id) });
+    expect(received?.receivedAt).toBeInstanceOf(Date);
+  });
+
+  it("deduplicates receipt retries and blocks new requests from receiving the same item twice", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, name: "", unit: "", quantity: 2 });
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true);
+    const requestId = randomUUID();
+    const first = await receiveShoppingItem(owner, home, requestId, item.id, 1, 2);
+    expect(await receiveShoppingItem(owner, home, requestId, item.id, 1, 2)).toEqual(first);
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 1, 2)).rejects.toThrow("ya fue recibido");
+    await expect(receiveShoppingItem(owner, home, requestId, item.id, 1, 3)).rejects.toThrow("otra operación");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(4);
+    expect(await StockMovement.countDocuments({ householdId: home, requestId })).toBe(1);
+    const nextTrip = await addShoppingItem(member, home, randomUUID(), { productId, name: "", unit: "", quantity: 1 });
+    expect(nextTrip.id).not.toBe(item.id);
+  });
+
+  it("serializes two household members receiving the same item concurrently", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 1, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true);
+    const results = await Promise.allSettled([receiveShoppingItem(owner, home, randomUUID(), item.id, 1, 1), receiveShoppingItem(member, home, randomUUID(), item.id, 1, 1)]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(3);
+    expect(await ShoppingItem.findById(item.id).lean()).toMatchObject({ status: "received", receivedQuantity: 1 });
+  });
+
+  it("adds missing stock once across bulk/manual additions and preserves existing planned amounts", async () => {
+    await Product.updateOne({ _id: productId }, { quantity: 0, lowStockThreshold: null });
+    await Product.insertMany([
+      { householdId: home, name: "Leche", quantity: 2, lowStockThreshold: 2 },
+      { householdId: home, name: "Disponible", quantity: 3, lowStockThreshold: 2 },
+      { householdId: home, name: "Archivado", quantity: 0, archivedAt: new Date() },
+      { householdId: otherHome, name: "Ajeno", quantity: 0 },
+    ]);
+    await Promise.all([addLowStockToShopping(owner, home, randomUUID()), addShoppingItem(member, home, randomUUID(), { productId, quantity: 3, name: "", unit: "" })]);
+    const pending = await listShoppingItems(owner, home, "pending");
+    expect(pending.items.map((item) => item.name).sort()).toEqual(["Arroz", "Leche"]);
+    const rice = pending.items.find((item) => item.productId === productId)!;
+    await editShoppingQuantity(member, home, randomUUID(), rice.id, 0, 7);
+    await setShoppingPurchased(member, home, randomUUID(), rice.id, 1, true);
+    await addLowStockToShopping(owner, home, randomUUID());
+    expect(await ShoppingItem.countDocuments({ householdId: home, productId })).toBe(1);
+    expect(await ShoppingItem.findById(rice.id).lean()).toMatchObject({ quantity: 7, status: "purchased" });
+  });
+
+  it("handles custom shopping items without creating inventory or stock movements", async () => {
+    const before = await StockMovement.countDocuments({ householdId: home });
+    const item = await addShoppingItem(member, home, randomUUID(), { productId: null, name: "Servilletas", unit: "paquetes", quantity: 2 });
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 0, 2)).rejects.toThrow("como comprado");
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true);
+    await receiveShoppingItem(member, home, randomUUID(), item.id, 1, 3);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(before);
+    expect(await Product.countDocuments({ householdId: home })).toBe(1);
+    expect((await listShoppingItems(owner, home, "received")).items[0]).toMatchObject({ name: "Servilletas", productId: null, receivedQuantity: 3 });
+  });
+
+  it("rejects stale edits and purchase changes, preserves receipt history, and deletes without changing stock", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, name: "", unit: "", quantity: 2 });
+    await editShoppingQuantity(member, home, randomUUID(), item.id, 0, 4);
+    await expect(setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true)).rejects.toThrow("lista cambió");
+    await expect(deleteShoppingItem(owner, home, randomUUID(), item.id, 0)).rejects.toThrow("lista cambió");
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 1, true);
+    await setShoppingPurchased(member, home, randomUUID(), item.id, 2, false);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    await deleteShoppingItem(member, home, randomUUID(), item.id, 3);
+    expect(await getShoppingItem(owner, home, item.id)).toBeNull();
+  });
+
+  it("rolls back receipts for archived products and stock overflow", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true);
+    await setProductArchived(owner, home, randomUUID(), productId, true);
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 1, 2)).rejects.toThrow("No se puede aplicar");
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "purchased", revision: 1 });
+    await expect(addShoppingItem(member, home, randomUUID(), { productId, quantity: 1, name: "", unit: "" })).rejects.toThrow("Restaura");
+    await setProductArchived(owner, home, randomUUID(), productId, false);
+    await Product.updateOne({ _id: productId }, { quantity: Number.MAX_SAFE_INTEGER });
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 1, 1)).rejects.toThrow("No se puede aplicar");
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "purchased", revision: 1 });
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it("enforces household references, current membership, verified sessions, and permissions on retries", async () => {
+    await expect(addShoppingItem(outsider, otherHome, randomUUID(), { productId, name: "", unit: "", quantity: 1 })).rejects.toThrow("no pertenece");
+    const requestId = randomUUID();
+    const item = await addShoppingItem(member, home, requestId, { productId, name: "", unit: "", quantity: 1 });
+    await expect(getShoppingItem(outsider, otherHome, item.id)).resolves.toBeNull();
+    await expect(setShoppingPurchased(outsider, otherHome, randomUUID(), item.id, 0, true)).rejects.toThrow("no pertenece");
+    await expect(listShoppingItems(outsider, home, "pending")).rejects.toThrow();
+    await expect(shoppingProductOptions(outsider, home)).rejects.toThrow();
+    await expect(addLowStockToShopping({ ...member, sessionVersion: 999 }, home, randomUUID())).rejects.toThrow("Inicia sesión");
+    await Membership.deleteOne({ userId: member.id, householdId: home });
+    await expect(addShoppingItem(member, home, requestId, { productId, name: "", unit: "", quantity: 1 })).rejects.toThrow("No tienes permiso");
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 0, 1)).rejects.toThrow("No tienes permiso");
+    await expect(listShoppingItems(member, home, "pending")).rejects.toThrow("No tienes permiso");
+    await User.updateOne({ _id: owner.id }, { emailVerifiedAt: null });
+    await expect(addLowStockToShopping(owner, home, randomUUID())).rejects.toThrow("verifica tu correo");
+  });
+
+  it("deduplicates additions even after deletion and validates quantity boundaries", async () => {
+    const input = { productId: null, name: "Jabón (manos)", unit: "botellas", quantity: 1 };
+    const requestId = randomUUID();
+    const item = await addShoppingItem(owner, home, requestId, input);
+    expect(await addShoppingItem(owner, home, requestId, input)).toEqual(item);
+    await deleteShoppingItem(owner, home, randomUUID(), item.id, 0);
+    expect(await addShoppingItem(owner, home, requestId, input)).toEqual(item);
+    expect(await ShoppingItem.exists({ _id: item.id })).toBeNull();
+    for (const quantity of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "1e3"]) await expect(addShoppingItem(owner, home, randomUUID(), { ...input, quantity })).rejects.toThrow();
+  });
+
+  it("filters shopping names literally, scopes reads and searches products beyond the initial options", async () => {
+    await addShoppingItem(owner, home, randomUUID(), { productId: null, name: "Jabón (manos)", unit: "botellas", quantity: 1 });
+    await addShoppingItem(outsider, otherHome, randomUUID(), { productId: null, name: "Jabón (manos)", unit: "botellas", quantity: 1 });
+    expect((await listShoppingItems(member, home, "pending", "(manos)")).total).toBe(1);
+    expect((await listShoppingItems(member, home, "pending", ".*")).total).toBe(0);
+    await Product.insertMany(Array.from({ length: 105 }, (_, i) => ({ householdId: home, name: `A producto ${i}` })));
+    await Product.create({ householdId: home, name: "Z final" });
+    expect(await shoppingProductOptions(member, home)).toHaveLength(100);
+    expect((await shoppingProductOptions(member, home, "Z final")).map((product) => product.name)).toEqual(["Z final"]);
+    expect((await shoppingProductOptions(outsider, otherHome, "Z final"))).toEqual([]);
+  });
+
+  it("blocks receipt if the linked product unit changed while shopping", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    await setShoppingPurchased(member, home, randomUUID(), item.id, 0, true);
+    await Product.updateOne({ _id: productId }, { unit: "kilogramos" });
+    await expect(receiveShoppingItem(member, home, randomUUID(), item.id, 1, 2)).rejects.toThrow("unidad del producto cambió");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "purchased", revision: 1 });
+  });
+
+  it("saves the inline quantity and purchased state together without changing stock", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 1, name: "", unit: "" });
+    await expect(setShoppingPurchased(member, home, randomUUID(), item.id, 0, true, "0")).rejects.toThrow();
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "pending", revision: 0, quantity: 1 });
+    await setShoppingPurchased(member, home, randomUUID(), item.id, 0, true, "5");
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "purchased", revision: 1, quantity: 5 });
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    await expect(setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true, "8")).rejects.toThrow("lista cambió");
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 1, false);
+    expect(await getShoppingItem(owner, home, item.id)).toMatchObject({ status: "pending", quantity: 5 });
+  });
+
+  it("receives a complete purchase atomically, including custom entries, with distinct stock movements", async () => {
+    const milk = await createProduct(owner, home, randomUUID(), { ...input, name: "Leche", quantity: "0" });
+    for (const [id, quantity] of [[productId, 3], [milk.id, 2]] as const) {
+      const item = await addShoppingItem(owner, home, randomUUID(), { productId: id, quantity: 1, name: "", unit: "" });
+      await setShoppingPurchased(member, home, randomUUID(), item.id, 0, true, quantity);
+    }
+    const custom = await addShoppingItem(member, home, randomUUID(), { productId: null, quantity: 4, name: "Servilletas", unit: "paquetes" });
+    await setShoppingPurchased(member, home, randomUUID(), custom.id, 0, true);
+    const selected = await purchasedReceiptItems(owner, home);
+    expect(selected).toHaveLength(3);
+    const requestId = "x".repeat(128);
+    const received = await receivePurchasedItems(owner, home, requestId, JSON.stringify(selected));
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(5);
+    expect((await getInventoryProduct(owner, home, milk.id))?.quantity).toBe(2);
+    expect(await purchasedReceiptItems(member, home)).toEqual([]);
+    expect((await listShoppingItems(owner, home, "received")).total).toBe(3);
+    const entries = await ShoppingItem.find({ householdId: home, status: "received", productId: { $ne: null } }).lean();
+    expect(new Set(entries.map((item) => item.receivedMovementId?.toString())).size).toBe(2);
+    const movements = await StockMovement.find({ _id: { $in: entries.map((item) => item.receivedMovementId) } }).lean();
+    expect(movements.every((movement) => movement.actorId.toString() === owner.id && movement.requestId.length === 64)).toBe(true);
+    expect(await receivePurchasedItems(owner, home, requestId, [...selected].reverse())).toEqual(received);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(5);
+    await expect(receivePurchasedItems(member, home, randomUUID(), selected)).rejects.toThrow("ya fue recibido");
+    await expect(deleteShoppingItem(member, home, randomUUID(), custom.id, 2)).rejects.toThrow("ya fue recibido");
+  });
+
+  it("rolls back every receipt when any selected product changed or would overflow", async () => {
+    const first = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    const milk = await createProduct(owner, home, randomUUID(), { ...input, name: "Leche", quantity: "1" });
+    const second = await addShoppingItem(owner, home, randomUUID(), { productId: milk.id, quantity: 2, name: "", unit: "" });
+    await setShoppingPurchased(member, home, randomUUID(), first.id, 0, true);
+    await setShoppingPurchased(member, home, randomUUID(), second.id, 0, true);
+    const selected = await purchasedReceiptItems(owner, home);
+    const before = await StockMovement.countDocuments({ householdId: home });
+    await Product.updateOne({ _id: milk.id }, { unit: "cartones" });
+    await expect(receivePurchasedItems(member, home, randomUUID(), selected)).rejects.toThrow("unidad del producto cambió");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(before);
+    expect(await purchasedReceiptItems(owner, home)).toEqual(selected);
+    await Product.updateOne({ _id: milk.id }, { unit: "bolsas", quantity: Number.MAX_SAFE_INTEGER });
+    await expect(receivePurchasedItems(member, home, randomUUID(), selected)).rejects.toThrow("No se puede aplicar");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    expect(await purchasedReceiptItems(owner, home)).toEqual(selected);
+  });
+
+  it("blocks stale and tampered batch quantities and preserves items purchased after the reviewed snapshot", async () => {
+    const first = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), first.id, 0, true);
+    const selected = await purchasedReceiptItems(member, home);
+    await expect(receivePurchasedItems(member, home, randomUUID(), [{ ...selected[0], quantity: 3 }])).rejects.toThrow("cantidades cambiaron");
+    await editShoppingQuantity(owner, home, randomUUID(), first.id, 1, 4);
+    await expect(receivePurchasedItems(member, home, randomUUID(), selected)).rejects.toThrow("lista cambió");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    const refreshed = await purchasedReceiptItems(member, home);
+    const later = await addShoppingItem(owner, home, randomUUID(), { productId: null, name: "Después", quantity: 1, unit: "unidad" });
+    await setShoppingPurchased(owner, home, randomUUID(), later.id, 0, true);
+    await receivePurchasedItems(member, home, randomUUID(), refreshed);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(6);
+    expect(await purchasedReceiptItems(owner, home)).toEqual([{ id: later.id, revision: 1, quantity: 1 }]);
+  });
+
+  it("allows only one of two concurrent batch confirmations to update stock", async () => {
+    const item = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 3, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), item.id, 0, true);
+    const selected = await purchasedReceiptItems(member, home);
+    const results = await Promise.allSettled([receivePurchasedItems(owner, home, randomUUID(), selected), receivePurchasedItems(member, home, randomUUID(), selected)]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(5);
+  });
+
+  it("checks batch membership and references without partially receiving another household's item", async () => {
+    const own = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), own.id, 0, true);
+    const foreign = await addShoppingItem(outsider, otherHome, randomUUID(), { productId: null, name: "Ajeno", quantity: 1, unit: "unidad" });
+    await setShoppingPurchased(outsider, otherHome, randomUUID(), foreign.id, 0, true);
+    const selected = await purchasedReceiptItems(owner, home);
+    await expect(receivePurchasedItems(member, home, randomUUID(), [...selected, { id: foreign.id, revision: 1, quantity: 1 }])).rejects.toThrow("no pertenece");
+    expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(2);
+    const requestId = randomUUID();
+    await receivePurchasedItems(member, home, requestId, selected);
+    await Membership.deleteOne({ householdId: home, userId: member.id });
+    await expect(receivePurchasedItems(member, home, requestId, selected)).rejects.toThrow("No tienes permiso");
+    await expect(purchasedReceiptItems(member, home)).rejects.toThrow("No tienes permiso");
+  });
+
+  it("receives all purchased entries beyond the 100-row display limit", async () => {
+    await ShoppingItem.insertMany(Array.from({ length: 101 }, (_, index) => ({ householdId: home, addedById: owner.id, name: `Artículo ${index}`, quantity: 1, status: "purchased" })));
+    const selected = await purchasedReceiptItems(member, home);
+    expect(selected).toHaveLength(101);
+    const page = await listShoppingItems(owner, home, "purchased");
+    expect(page.items).toHaveLength(100);
+    expect(page.receiptItems.slice(0, 100)).toEqual(page.items.map(({ id, revision, quantity }) => ({ id, revision, quantity })));
+    await receivePurchasedItems(member, home, randomUUID(), selected);
+    expect(await purchasedReceiptItems(owner, home)).toEqual([]);
+    expect((await listShoppingItems(owner, home, "received")).total).toBe(101);
   });
 });

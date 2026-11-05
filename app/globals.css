@@ -77,6 +77,7 @@ button, a {
   .action-block { width: 100%; }
   .action-reveal { @apply shrink-0 border-l border-line text-xs font-semibold text-brand hover:bg-sage; min-height: var(--size-touch); width: var(--size-reveal-width); border-radius: 0 var(--size-radius-control) var(--size-radius-control) 0; }
   .control { @apply w-full border border-line bg-surface-muted text-base transition-colors focus:bg-surface; padding-inline: var(--size-control-padding); min-height: var(--size-touch); border-radius: var(--size-radius-control); }
+  .control-quantity { @apply shrink-0 px-2 text-center font-semibold tabular-nums; width: var(--size-quantity-entry); }
   .control-group { @apply flex items-stretch border border-line bg-surface; border-radius: var(--size-radius-control); }
   .control-group .control { @apply min-w-0 flex-1 border-0 bg-transparent; }
   .field-label { @apply mb-1 block text-sm font-semibold; }
@@ -163,7 +164,7 @@ button, a {
   .collection-surface { @apply min-w-0 overflow-hidden border border-line bg-surface; border-radius: var(--size-radius-panel); box-shadow: var(--shadow-panel); }
   .symbol-muted { @apply inline-flex shrink-0 items-center justify-center bg-sage text-brand; width: var(--size-symbol-small); height: var(--size-symbol-small); border-radius: var(--size-radius-control); }
   .label-soft { @apply inline-flex max-w-full items-center bg-sage px-2 py-1 text-xs font-medium; border-radius: var(--size-radius-control); }
-  .event-row { @apply flex flex-wrap items-start gap-3; padding: var(--size-space-sm); }
+  .event-row { @apply flex flex-wrap items-center hover:bg-surface-muted; gap: var(--size-space-xs); min-height: calc(var(--size-record-content-min) + 2 * var(--size-space-xs)); padding: var(--size-space-xs) var(--size-space-sm); }
   .event-action { @apply max-w-full; }
   .event-action .form-flow { margin-top: 0; }
   .event-action .stack { gap: 0; }
@@ -176,6 +177,7 @@ button, a {
   .table-responsive tbody tr[data-stock-status="low"] { box-shadow: inset var(--size-focus-width) 0 0 var(--warning); }
   .table-responsive th, .table-responsive td { @apply min-w-0 break-words; }
   .record-link { @apply flex min-w-0 flex-1 flex-col justify-center text-sm font-bold hover:text-brand; min-height: var(--size-touch); }
+  .record-identity { display: flex; min-width: 0; align-items: center; gap: var(--size-space-2xs); }
   .cell-primary { @apply font-semibold; }
   .cell-description { @apply hidden text-muted; }
   .quantity-value { @apply text-center text-lg font-semibold tabular-nums; min-width: var(--size-quantity-value); }
@@ -192,18 +194,32 @@ button, a {
   }
   .record-list { @apply divide-y divide-line; }
   .record-row { @apply flex flex-wrap items-center; padding-inline: var(--size-space-sm); gap: var(--size-space-sm); padding-block: var(--size-space-sm); }
-  .collection-surface .record-row { @apply grid; grid-template-columns: minmax(0, 1fr) auto; padding-block: var(--size-space-xs); gap: var(--size-space-xs); }
-  .collection-surface .record-row > .symbol-muted { @apply hidden sm:inline-flex; }
-  @media (min-width: 40rem) { .collection-surface .record-row { grid-template-columns: auto minmax(0, 1fr) auto; } }
+  .collection-surface .record-row { @apply grid hover:bg-surface-muted; grid-template-columns: minmax(0, 1fr) auto; padding-block: var(--size-space-xs); gap: var(--size-space-xs); }
+  .collection-surface .record-content { min-height: var(--size-record-content-min); display: flex; flex-direction: column; justify-content: center; }
   .record-content { @apply min-w-0 break-words; flex: 1 1 8rem; }
   .record-title { @apply text-sm font-bold; }
-  .record-description { @apply mt-1 text-xs leading-5 text-muted; }
+  .record-description { @apply text-xs leading-5 text-muted; }
   .record-status { @apply mt-1; }
   .record-actions { @apply max-w-full; flex: 0 1 auto; }
   .record-actions .form-flow { @apply mt-0; }
   .quantity-controls { width: max-content; align-self: flex-start; @apply inline-flex max-w-full flex-wrap items-center border border-line bg-surface-muted; border-radius: var(--size-radius-control); }
   .quantity-controls .action-secondary { @apply border-0 bg-transparent px-0 text-brand hover:bg-sage; min-width: var(--size-touch); border-radius: var(--size-radius-button); box-shadow: none; }
   .quantity-controls .quantity-value { @apply text-base; }
+  .quantity-controls .control-quantity { @apply border-0 bg-transparent; border-radius: 0; appearance: textfield; }
+  .quantity-controls .control-quantity::-webkit-inner-spin-button,
+  .quantity-controls .control-quantity::-webkit-outer-spin-button { appearance: none; margin: 0; }
+  .action-compact { min-width: var(--size-control-compact); min-height: var(--size-control-compact); padding-inline: var(--size-space-2xs); }
+  .quantity-controls-compact .action-secondary { min-width: var(--size-control-compact); min-height: var(--size-control-compact); }
+  .quantity-controls-compact .control-quantity { min-height: var(--size-control-compact); width: var(--size-quantity-entry-compact); }
+  .quantity-controls-compact .quantity-value { min-width: var(--size-quantity-entry-compact); }
+  .table-compact .record-link { min-height: var(--size-record-content-min); }
+  .table-compact tbody tr { align-items: center; }
+  .table-compact tbody th, .table-compact tbody td { vertical-align: middle; }
+  .table-compact .cell-actions, .table-compact thead th:last-child { text-align: right; }
+  .table-compact .cell-actions .quantity-controls { align-self: flex-end; }
+  .record-adjustable { display: grid; grid-template-columns: var(--size-control-compact) minmax(0, 1fr) auto auto; align-items: center; gap: var(--size-space-xs); padding-block: var(--size-space-xs); }
+  .record-adjustment { grid-column: 3; grid-row: 1; justify-self: end; }
+  @media (min-width: 48rem) { .table-compact tbody th, .table-compact tbody td { padding-block: var(--size-space-xs); } }
   .detail-grid { @apply grid gap-3 text-sm sm:grid-cols-3; }
   .responsive-split { @apply grid items-start; grid-template-areas: 'lead' 'action' 'support'; gap: var(--size-space-md); padding-block: var(--size-space-md); }
   .responsive-split > .lead-copy { grid-area: lead; }

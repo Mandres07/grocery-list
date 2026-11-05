@@ -24,7 +24,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       </div>
     </ListFilters><ProductDialog householdId={householdId} categories={categories} /></div>}>
 
-    <ProductTable householdId={householdId} products={products} categories={labels} total={total} lowStockOnly={lowStock} archived={archived} />
+    <ProductTable key={JSON.stringify([householdId, query, category, lowStock, archived])} householdId={householdId} products={products} categories={labels} total={total} lowStockOnly={lowStock} archived={archived} />
     <RefreshInventory />
   </InventoryShell></div>;
 }

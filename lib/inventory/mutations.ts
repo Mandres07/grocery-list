@@ -12,9 +12,9 @@ import { requireCategoryInHousehold, requireProductInHousehold, validateCategory
 import { inventoryName, inventoryRequestId, optionalId, optionalQuantity, wholeNumber } from "./validation";
 
 interface Result { id: string; movementId: string | null }
-interface MutationContext { session: ClientSession; householdId: Types.ObjectId; actorId: Types.ObjectId }
+export interface MutationContext { session: ClientSession; householdId: Types.ObjectId; actorId: Types.ObjectId }
 
-async function mutate(actor: HouseholdActor, householdId: string, requestId: string, operation: string, payload: unknown,
+export async function mutateInventory(actor: HouseholdActor, householdId: string, requestId: string, operation: string, payload: unknown,
   operationBody: (context: MutationContext) => Promise<Result>) {
   inventoryRequestId(requestId);
   const household = requireObjectId(householdId);
@@ -76,7 +76,7 @@ async function resolveProductCategory(context: MutationContext, categoryId: Type
 export async function createProduct(actor: HouseholdActor, householdId: string, requestId: string, input: ProductInput) {
   const fields = { ...productFields(input), quantity: wholeNumber(input.quantity) };
   const draft = categoryDraft(input);
-  return mutate(actor, householdId, requestId, "product-create", { ...fields, ...(draft ? { draft } : {}) }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "product-create", { ...fields, ...(draft ? { draft } : {}) }, async (context) => {
     const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
     const [product] = await Product.create([{ householdId: context.householdId, ...fields, categoryId }], { session: context.session });
     return { id: product._id.toString(), movementId: await movement(context, product._id, requestId, 0, fields.quantity, "receipt") };
@@ -93,7 +93,7 @@ export async function editProduct(actor: HouseholdActor, householdId: string, re
   const revision = wholeNumber(expectedRevision);
   const fields = productFields(input);
   const draft = categoryDraft(input);
-  return mutate(actor, householdId, requestId, "product-edit", { id, revision, ...fields, ...(draft ? { draft } : {}) }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "product-edit", { id, revision, ...fields, ...(draft ? { draft } : {}) }, async (context) => {
     const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
     const updated = await Product.updateOne({ _id: id, householdId: context.householdId, archivedAt: null, ...revisionFilter(revision) }, { $set: { ...fields, categoryId }, $inc: { revision: 1 } }, { session: context.session, runValidators: true });
     if (!updated.modifiedCount) throw new AccountError("El producto cambió o ya no está disponible. Actualiza la página antes de editarlo.");
@@ -103,14 +103,14 @@ export async function editProduct(actor: HouseholdActor, householdId: string, re
 
 export async function setProductArchived(actor: HouseholdActor, householdId: string, requestId: string, productId: string, archived: boolean) {
   const id = requireObjectId(productId);
-  return mutate(actor, householdId, requestId, "product-archive", { id, archived }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "product-archive", { id, archived }, async (context) => {
     const product = await requireProductInHousehold(context.householdId, id, context.session);
     if (Boolean(product.archivedAt) !== archived) await Product.updateOne({ _id: id, householdId: context.householdId }, { $set: { archivedAt: archived ? new Date() : null }, $inc: { revision: 1 } }, { session: context.session });
     return { id: productId, movementId: null };
   });
 }
 
-async function changeQuantity(context: MutationContext, productId: Types.ObjectId, requestId: string, delta: number,
+export async function changeQuantity(context: MutationContext, productId: Types.ObjectId, requestId: string, delta: number,
   reason: "receipt" | "consumption" | "correction" | "undo", undoOfMovementId: Types.ObjectId | null = null) {
   const before = await Product.findOneAndUpdate({
     _id: productId, householdId: context.householdId, archivedAt: null,
@@ -123,7 +123,7 @@ async function changeQuantity(context: MutationContext, productId: Types.ObjectI
 export async function adjustStock(actor: HouseholdActor, householdId: string, requestId: string, productId: string, delta: number) {
   const id = requireObjectId(productId);
   if (!Number.isSafeInteger(delta) || delta === 0) throw new AccountError("Usa un cambio entero distinto de cero.");
-  return mutate(actor, householdId, requestId, "stock-adjust", { id, delta }, async (context) => ({
+  return mutateInventory(actor, householdId, requestId, "stock-adjust", { id, delta }, async (context) => ({
     id: productId, movementId: await changeQuantity(context, id, requestId, delta, delta > 0 ? "receipt" : "consumption"),
   }));
 }
@@ -132,7 +132,7 @@ export async function correctStock(actor: HouseholdActor, householdId: string, r
   const id = requireObjectId(productId);
   const revision = wholeNumber(expectedRevision);
   const quantity = wholeNumber(rawQuantity);
-  return mutate(actor, householdId, requestId, "stock-correct", { id, revision, quantity }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "stock-correct", { id, revision, quantity }, async (context) => {
     const product = await Product.findOne({ _id: id, householdId: context.householdId, archivedAt: null, ...revisionFilter(revision) }).session(context.session);
     if (!product) throw new AccountError("Las existencias cambiaron. Actualiza la página y revisa la cantidad antes de corregirla.");
     const before = product.quantity;
@@ -145,7 +145,7 @@ export async function correctStock(actor: HouseholdActor, householdId: string, r
 
 export async function undoStockMovement(actor: HouseholdActor, householdId: string, requestId: string, movementId: string) {
   const id = requireObjectId(movementId);
-  return mutate(actor, householdId, requestId, "stock-undo", { id }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "stock-undo", { id }, async (context) => {
     const original = await StockMovement.findOne({ _id: id, householdId: context.householdId }).session(context.session);
     if (!original || original.reason === "undo" || await StockMovement.exists({ householdId: context.householdId, undoOfMovementId: id }).session(context.session)) {
       throw new AccountError("Este movimiento no se puede deshacer o ya fue deshecho.");
@@ -158,7 +158,7 @@ export async function saveCategory(actor: HouseholdActor, householdId: string, r
   const id = input.id ? requireObjectId(input.id) : new Types.ObjectId();
   const name = inventoryName(input.name, 100);
   const parentId = optionalId(input.parentId);
-  return mutate(actor, householdId, requestId, input.id ? "category-edit" : "category-create", { id: input.id ?? null, name, parentId }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, input.id ? "category-edit" : "category-create", { id: input.id ?? null, name, parentId }, async (context) => {
     if (input.id) await requireCategoryInHousehold(context.householdId, id, context.session);
     await validateCategoryParent(context.householdId, id, parentId, context.session);
     if (input.id) await Category.updateOne({ _id: id, householdId: context.householdId }, { $set: { name, parentId } }, { session: context.session, runValidators: true });
@@ -169,7 +169,7 @@ export async function saveCategory(actor: HouseholdActor, householdId: string, r
 
 export async function deleteCategory(actor: HouseholdActor, householdId: string, requestId: string, categoryId: string) {
   const id = requireObjectId(categoryId);
-  return mutate(actor, householdId, requestId, "category-delete", { id }, async (context) => {
+  return mutateInventory(actor, householdId, requestId, "category-delete", { id }, async (context) => {
     await requireCategoryInHousehold(context.householdId, id, context.session);
     if (await Product.exists({ householdId: context.householdId, categoryId: id }).session(context.session) || await Category.exists({ householdId: context.householdId, parentId: id }).session(context.session)) {
       throw new AccountError("Mueve primero los productos y las subcategorías, incluidos los productos archivados.");

@@ -59,6 +59,10 @@
   --size-quantity-value: 3ch;
   --size-measure-settings: 960px;
   --size-symbol-small: 32px;
+  --size-quantity-entry: 72px;
+  --size-control-compact: 32px;
+  --size-quantity-entry-compact: 44px;
+  --size-record-content-min: 36px;
   --font-family-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-display: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-family-email: "Manrope", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;

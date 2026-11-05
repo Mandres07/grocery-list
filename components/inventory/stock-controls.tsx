@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { latestStock, type StockSnapshot } from "@/lib/inventory/stock-state";
 import { inventoryAction } from "@/app/(account)/inventory/actions";
 
-export function StockControls({ householdId, productId, name, quantity, revision, onStockChange }: { householdId: string; productId: string; name: string; quantity: number; revision: number; onStockChange?: (stock: StockSnapshot) => void }) {
+export function StockControls({ householdId, productId, name, quantity, revision, onStockChange, onAdjustingChange }: { householdId: string; productId: string; name: string; quantity: number; revision: number; onStockChange?: (stock: StockSnapshot) => void; onAdjustingChange?: (adjusting: boolean) => void }) {
   const router = useRouter();
   const [stock, setStock] = useState({ quantity, revision });
   if (revision > stock.revision) setStock({ quantity, revision });
@@ -23,6 +23,7 @@ export function StockControls({ householdId, productId, name, quantity, revision
     const data = new FormData();
     for (const [key, value] of Object.entries({ kind: "adjust-stock", householdId, productId, requestId: request.current.id, delta: String(delta) })) data.set(key, value);
     busy.current = true;
+    onAdjustingChange?.(true);
     setPending(true);
     setMessage("");
     setFailed(false);
@@ -38,7 +39,7 @@ export function StockControls({ householdId, productId, name, quantity, revision
         }
         request.current = null;
         setUncertain(false);
-        router.refresh();
+        if (!onAdjustingChange) router.refresh();
       }
       else if (result.retryable) { setUncertain(true); }
       else { request.current = null; setUncertain(false); router.refresh(); }
@@ -46,10 +47,10 @@ export function StockControls({ householdId, productId, name, quantity, revision
       setFailed(true);
       setMessage("No pudimos confirmar el cambio. Reintenta la operación pendiente; no se aplicará dos veces.");
       setUncertain(true);
-    } finally { busy.current = false; setPending(false); }
+    } finally { busy.current = false; setPending(false); onAdjustingChange?.(false); }
   }
   return <div className="stack-tight" aria-busy={pending}>
-    <div className="quantity-controls" role="group" aria-label={`Existencias de ${name}`}>
+    <div className="quantity-controls quantity-controls-compact" role="group" aria-label={`Existencias de ${name}`}>
       <button className="action-secondary text-xl" aria-label={`Restar una unidad de ${name}`} disabled={pending || uncertain || displayQuantity === 0} onClick={() => adjust(-1)}>−</button>
       <span className="quantity-value" aria-label={`${displayQuantity} en casa`}>{displayQuantity}</span>
       <button className="action-secondary text-xl" aria-label={`Sumar una unidad de ${name}`} disabled={pending || uncertain || displayQuantity === Number.MAX_SAFE_INTEGER} onClick={() => adjust(1)}>+</button>

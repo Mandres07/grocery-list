@@ -97,6 +97,10 @@ Review: restart the Next.js dev server once after the household schema update. O
 
 ## Milestone 6 — Shared grocery list
 
+Status: complete. `/shopping` provides Pending, Purchased, and Received views, linked/custom items, confirmed low-stock additions, and explicit atomic stock receipt. Pending quantities are edited inline and saved with the purchase check; one whole-purchase confirmation receives all reviewed quantities and opens receipt history. Batch receipts use versioned snapshots and roll back as a whole on conflicts. No new external setup is required. See `docs/shopping.md` for behavior and verification. Restart the development server to load the ShoppingItem schema changes.
+
+Verification: 177 unit tests and 85 disposable-database integration checks pass, along with lint, TypeScript, and production build. Browser checks with two fixture accounts cover shared receipt/history, creation/search/edit/removal, custom receipts, responsive layouts, and interrupted purchase/receipt response retries. Milestone 7 has not started. Shared collection styling and compact controls are aligned across inventory, categories, activity, and all shopping states. Inventory quantities/status update immediately while row order and filter removal wait for 1.5 seconds of idle time after adjustments; browser checks cover repeated increases/decreases and filtered rows on mobile and desktop.
+
 - Product-linked and custom shopping items, quantities, and purchased state.
 - Add low-stock products to shopping list.
 - Explicit confirmed stock receipt, deduplicated independently from purchase checkboxes.

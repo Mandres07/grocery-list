@@ -15,7 +15,7 @@ export function RefreshInventory() {
   useEffect(() => {
     function refresh() {
       const online = navigator.onLine;
-      if (online && document.visibilityState === "visible" && !document.querySelector('form[data-dirty="true"], form[aria-busy="true"]')) router.refresh();
+      if (online && document.visibilityState === "visible" && !document.querySelector('form[data-dirty="true"], form[aria-busy="true"], form[data-uncertain="true"]')) router.refresh();
     }
     const timer = window.setInterval(refresh, 30_000);
     window.addEventListener("focus", refresh);

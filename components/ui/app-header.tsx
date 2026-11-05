@@ -8,6 +8,7 @@ import { SignOutButton } from "@/components/auth/sign-in-form";
 function AccountLinks({ emailVerified, className }: { emailVerified: boolean; className: string }) {
   return <>
     {emailVerified && <NavigationLink href="/inventory" className={className}><Icon name="basket" className="glyph-icon" />Inventario</NavigationLink>}
+    {emailVerified && <NavigationLink href="/shopping" className={className}><Icon name="check" className="glyph-icon" />Compras</NavigationLink>}
     <NavigationLink href="/household" className={className}><Icon name="home" className="glyph-icon" />Mi hogar</NavigationLink>
     <NavigationLink href="/account" className={className}><Icon name="user" className="glyph-icon" />Mi cuenta</NavigationLink>
   </>;

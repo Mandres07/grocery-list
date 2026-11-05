@@ -41,7 +41,7 @@ describe("inventory sections", () => {
   it("groups product details and stock controls in a responsive table", async () => {
     vi.mocked(listInventory).mockResolvedValue({ total: 1, categories: [{ id: "c".repeat(24), name: "Despensa", parentId: null }], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 3, revision: 0, categoryId: "c".repeat(24), lowStockThreshold: 1, archived: false }] });
     const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({}) }));
-    expect(html).toContain('class="table-responsive"');
+    expect(html).toContain('class="table-responsive table-compact"');
     expect(html).toContain('<th scope="col">Producto</th>');
     expect(html).toContain('<th scope="col">Categoría</th>');
     expect(html).toContain('scope="row"');

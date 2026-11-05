@@ -92,3 +92,11 @@ Active products appear automatically in buying order: zero stock first, then pos
 Ranking and filtering apply before the 100-product database limit. The “Por reponer” filter includes zero stock without a threshold; missing legacy thresholds normalize to null. Search/category filters and household access checks remain in place.
 
 ProductTable has a small client boundary to reconcile confirmed stock responses by revision, immediately updating labels, row order, filtered membership, and result counts after adjustments. Delayed refreshes cannot overwrite a newer confirmed quantity. Failed or uncertain writes retain the existing retry/deduplication workflow and do not report a new stock status.
+
+### Shared shopping receipts
+
+The Compras navigation item opens the shared `/shopping` list. Its confirmed “Agregar faltantes” action copies active zero/threshold stock into pending purchases without duplicating active linked entries. Marking purchased does not change stock. Only an explicit received quantity adds stock atomically and creates an ordinary receipt movement, so the inventory priority and activity use their existing behavior. Shopping receipt history remains received if its inventory movement is later undone. See `docs/shopping.md` for the full workflow.
+
+Inventory now shares the shopping compact stepper: 32px adjustment buttons, a quantity column using the same compact-width token, and table-compact links/row alignment. Names wrap to at most two lines on both screen sizes, with status badges preserved. Compact size changes do not alter immediate stock persistence, revision reconciliation, or uncertain retry behavior.
+
+Stock adjustments save immediately and update quantity/status without moving the row. After all in-flight adjustments finish, the list waits 1.5 seconds without another adjustment before reapplying priority order and low-stock filtering. Each new adjustment restarts the delay; changing filters starts a fresh list. Timers are cleared on unmount.
