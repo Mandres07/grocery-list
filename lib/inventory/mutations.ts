@@ -10,6 +10,7 @@ import StockMovement from "@/models/StockMovement";
 import InventoryRequest from "@/models/InventoryRequest";
 import { requireCategoryInHousehold, requireProductInHousehold, validateCategoryParent } from "./references";
 import { inventoryName, inventoryRequestId, optionalId, optionalQuantity, wholeNumber } from "./validation";
+import { MAX_PRODUCT_BATCH_SIZE } from "./limits";
 
 interface Result { id: string; movementId: string | null }
 export interface MutationContext { session: ClientSession; householdId: Types.ObjectId; actorId: Types.ObjectId }
@@ -80,6 +81,35 @@ export async function createProduct(actor: HouseholdActor, householdId: string, 
     const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
     const [product] = await Product.create([{ householdId: context.householdId, ...fields, categoryId }], { session: context.session });
     return { id: product._id.toString(), movementId: await movement(context, product._id, requestId, 0, fields.quantity, "receipt") };
+  });
+}
+
+export async function createProducts(actor: HouseholdActor, householdId: string, requestId: string, input: {
+  categoryId: unknown; names: unknown[]; quantities: unknown[]; thresholds: unknown[];
+}) {
+  const { names, quantities, thresholds } = input;
+  if (!names.length || names.length > MAX_PRODUCT_BATCH_SIZE || quantities.length !== names.length || thresholds.length !== names.length) {
+    throw new AccountError(`Agrega entre 1 y ${MAX_PRODUCT_BATCH_SIZE} productos con sus cantidades y avisos.`);
+  }
+  const categoryId = optionalId(input.categoryId);
+  const products = names.map((name, index) => {
+    try {
+      return { name: inventoryName(name), unit: "unidades", quantity: wholeNumber(quantities[index]), lowStockThreshold: optionalQuantity(thresholds[index]) };
+    } catch (error) {
+      if (error instanceof AccountError) throw new AccountError(`Producto ${index + 1}: ${error.message}`);
+      throw error;
+    }
+  });
+  return mutateInventory(actor, householdId, requestId, "products-create", { categoryId, products }, async (context) => {
+    if (categoryId) await requireCategoryInHousehold(context.householdId, categoryId, context.session);
+    const created = await Product.insertMany(products.map((product) => ({ ...product, categoryId, householdId: context.householdId })), { session: context.session });
+    let firstMovementId: string | null = null;
+    for (const product of created) {
+      const movementRequestId = createHash("sha256").update(JSON.stringify([requestId, product._id.toString()])).digest("hex");
+      const movementId = await movement(context, product._id, movementRequestId, 0, product.quantity, "receipt");
+      firstMovementId ??= movementId;
+    }
+    return { id: created[0]._id.toString(), movementId: firstMovementId };
   });
 }
 

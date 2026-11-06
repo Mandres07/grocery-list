@@ -63,7 +63,13 @@ La revisión de navegador usa otra base temporal con correo deshabilitado. Los t
 
 Sign-in, automatic sign-in after registration, and visits to `/` or `/sign-in` with an active session lead to `/inventory`. Verification and household membership checks still send accounts that need setup to `/household`, which also preserves pending invitations. Creating a household or accepting an invitation leads straight to inventory. Mi hogar remains available for household management.
 
-On compact screens, the shared product dialog uses one floating green plus button with an accessible “Agregar producto” label. On wider screens the same trigger appears in the header with its label. Safe-area spacing and reserved space below the list keep the action reachable without covering the final record. Search and filters remain available through the header icon.
+On compact screens, the shared product dialog uses one floating green plus button with an accessible “Agregar productos” label. On wider screens the same trigger appears in the header with its label. Safe-area spacing and reserved space below the list keep the action reachable without covering the final record. Search and filters remain available through the header icon.
+
+### Add multiple products
+
+The shared green plus action **Agregar productos** opens one dialog on desktop and mobile, with compact **Un producto** and **Varios productos** choices below the title, without the navigation strip’s extra vertical margins. Switching choices preserves draft values; only the selected form is submitted. **Varios productos** shows the bulk form with one shared category (or Sin categoría). Each row accepts a name, initial whole quantity, and optional warning threshold; quantities use `unidades`. Use **Agregar otro** or the trash action to edit rows, then choose **Guardar productos** to save them, with up to 50 products per submission. Names and quantities are required on every remaining row. Each product stays on one line at every screen size. Mobile uses a wider dialog, a flexible name column, and compact numeric columns with the headings Cant. and Aviso. The plus-labelled add button appears as the next row in the grid; the primary save action stays below the list. Labels appear once in a sticky header above the scrollable rows. Each input retains its own accessible name. Adding a row focuses its new name input; removing a row returns focus to a remaining name input.
+
+The server validates the complete batch, checks current household access and category ownership, and commits all products and initial receipt movements in one transaction. A failure saves none of the batch. Retries reuse the request and payload so an uncertain result cannot duplicate products. Zero quantities create no stock movement. Single-product creation remains available with its custom unit and inline category creation.
 
 ### Compact responsive product table
 

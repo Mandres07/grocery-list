@@ -3,8 +3,8 @@
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { Icon } from "./icon";
 
-export function Modal({ open, title, onClose, dismissible = true, children, floatingClose }: {
-  open: boolean; title: string; onClose: () => void; dismissible?: boolean; children: ReactNode; floatingClose?: ReactNode;
+export function Modal({ open, title, onClose, dismissible = true, children, floatingClose, className = "" }: {
+  open: boolean; title: string; onClose: () => void; dismissible?: boolean; children: ReactNode; floatingClose?: ReactNode; className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -14,7 +14,7 @@ export function Modal({ open, title, onClose, dismissible = true, children, floa
     if (!open && dialog?.open) dialog.close();
   }, [open]);
   function dismiss() { if (dismissible) onClose(); }
-  return <dialog ref={ref} aria-labelledby={titleId} className="modal-surface" onCancel={(event) => { event.preventDefault(); dismiss(); }} onClick={(event) => {
+  return <dialog ref={ref} aria-labelledby={titleId} className={`modal-surface${className ? ` ${className}` : ""}`} onCancel={(event) => { event.preventDefault(); dismiss(); }} onClick={(event) => {
     if (event.target !== event.currentTarget) return;
     const bounds = event.currentTarget.getBoundingClientRect();
     if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) dismiss();

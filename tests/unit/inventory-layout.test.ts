@@ -26,7 +26,15 @@ describe("inventory sections", () => {
     expect(html).toContain('href="/inventory/categories"');
     expect(html).toContain('href="/inventory/activity"');
     expect(html.match(/<a[^>]*aria-current="page"[^>]*>([^<]+)/)?.[1]).toBe("Productos");
-    expect(html).toContain('aria-label="Agregar producto"');
+    expect(html).toContain('aria-label="Agregar productos"');
+    expect(html.match(/aria-haspopup="dialog"/g)).toHaveLength(1);
+    expect(html).toContain('aria-label="Forma de agregar productos"');
+    expect(html).toContain('aria-pressed="true">Un producto');
+    expect(html).toContain('aria-pressed="false">Varios productos');
+    expect(html).toContain('aria-label="Nombre del producto 1"');
+    expect(html).toContain("batch-entry-header");
+    expect(html).toContain("Agregar otro");
+    expect(html).toContain("Guardar producto");
     expect(html).toContain("action-float-compact");
     expect(html).toContain("reserve-floating-action");
     expect(html).toContain("Buscar producto");

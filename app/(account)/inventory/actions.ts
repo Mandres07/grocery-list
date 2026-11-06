@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { AccountError } from "@/lib/auth/validation";
 import { HouseholdAccessError } from "@/lib/households/access";
-import { adjustStock, correctStock, createProduct, deleteCategory, editProduct, saveCategory, setProductArchived, undoStockMovement } from "@/lib/inventory/mutations";
+import { adjustStock, correctStock, createProduct, createProducts, deleteCategory, editProduct, saveCategory, setProductArchived, undoStockMovement } from "@/lib/inventory/mutations";
 import { getInventoryProduct } from "@/lib/inventory/queries";
 import type { StockSnapshot } from "@/lib/inventory/stock-state";
 import type { AccountFormState } from "@/lib/auth/form-state";
@@ -27,6 +27,7 @@ export async function inventoryAction(_state: AccountFormState, data: FormData):
     const kind = field(data, "kind");
     let stock: StockSnapshot | undefined;
     switch (kind) {
+      case "create-products": await createProducts(user, householdId, requestId, { categoryId: data.get("categoryId"), names: data.getAll("names"), quantities: data.getAll("quantities"), thresholds: data.getAll("thresholds") }); break;
       case "create-product": await createProduct(user, householdId, requestId, { ...productInput(data), quantity: data.get("quantity") }); break;
       case "edit-product": await editProduct(user, householdId, requestId, field(data, "productId"), data.get("revision"), productInput(data)); break;
       case "archive-product": await setProductArchived(user, householdId, requestId, field(data, "productId"), true); break;

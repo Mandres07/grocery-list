@@ -4,14 +4,14 @@ vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
 vi.mock("@/lib/auth/session", () => ({ requireVerifiedUser: vi.fn() }));
 vi.mock("@/lib/inventory/queries", () => ({ getInventoryProduct: vi.fn() }));
 vi.mock("@/lib/inventory/mutations", () => ({
-  adjustStock: vi.fn(), correctStock: vi.fn(), createProduct: vi.fn(), deleteCategory: vi.fn(),
+  adjustStock: vi.fn(), correctStock: vi.fn(), createProduct: vi.fn(), createProducts: vi.fn(), deleteCategory: vi.fn(),
   editProduct: vi.fn(), saveCategory: vi.fn(), setProductArchived: vi.fn(), undoStockMovement: vi.fn(),
 }));
 
 import { inventoryAction } from "@/app/(account)/inventory/actions";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { getInventoryProduct } from "@/lib/inventory/queries";
-import { adjustStock } from "@/lib/inventory/mutations";
+import { adjustStock, createProducts } from "@/lib/inventory/mutations";
 import { AccountError } from "@/lib/auth/validation";
 import { revalidatePath } from "next/cache";
 
@@ -60,5 +60,28 @@ describe("stock adjustment feedback", () => {
     const result = await inventoryAction({ success: false, message: "" }, request());
     expect(result).toMatchObject({ success: false, message: "Ya no tienes acceso a este hogar." });
     expect(result.stock).toBeUndefined();
+  });
+});
+
+describe("bulk product submission", () => {
+  it("sends ordered rows and one shared category to a single mutation", async () => {
+    const data = request();
+    data.set("kind", "create-products");
+    data.set("categoryId", "d".repeat(24));
+    for (const row of [["Arroz", "2", "1"], ["Leche", "0", ""]]) {
+      data.append("names", row[0]); data.append("quantities", row[1]); data.append("thresholds", row[2]);
+    }
+    expect(await inventoryAction({ success: false, message: "" }, data)).toMatchObject({ success: true });
+    expect(createProducts).toHaveBeenCalledExactlyOnceWith(actor, data.get("householdId"), "retained-request", {
+      categoryId: "d".repeat(24), names: ["Arroz", "Leche"], quantities: ["2", "0"], thresholds: ["1", ""],
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("returns row validation errors without revalidating inventory", async () => {
+    vi.mocked(createProducts).mockRejectedValue(new AccountError("Producto 2: Escribe un nombre."));
+    const data = request(); data.set("kind", "create-products");
+    expect(await inventoryAction({ success: false, message: "" }, data)).toEqual({ success: false, message: "Producto 2: Escribe un nombre." });
+    expect(revalidatePath).not.toHaveBeenCalled();
   });
 });

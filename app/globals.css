@@ -123,10 +123,22 @@ button, a {
   .navigation-bar { position: sticky; top: 0; z-index: var(--size-layer-navigation); border-bottom: 1px solid var(--inverse-line); box-shadow: var(--shadow-navigation); }
   .navigation-content { @apply flex flex-wrap items-center justify-between gap-3; padding-block: var(--size-space-sm); }
   .section-header { @apply flex flex-wrap items-center justify-between gap-3; }
-  .section-navigation { @apply mb-3 mt-4 inline-flex max-w-full gap-1 overflow-x-auto border border-line bg-sage; padding: var(--size-space-2xs); border-radius: var(--size-radius-control); }
+  .section-navigation, .segmented-control { @apply inline-flex max-w-full gap-1 overflow-x-auto border border-line bg-sage; padding: var(--size-space-2xs); border-radius: var(--size-radius-control); }
+  .section-navigation { @apply mb-3 mt-4; }
+  .segmented-control .section-link { padding-inline: var(--size-space-xs); min-width: var(--size-touch); }
   .section-link { @apply inline-flex shrink-0 items-center justify-center px-3 text-sm font-medium text-muted hover:text-brand transition-colors; min-height: var(--size-touch); border-radius: var(--size-radius-button); }
-  .section-link[aria-current="page"] { @apply bg-surface font-semibold text-brand; box-shadow: var(--shadow-panel); }
+  .section-link[aria-current="page"], .section-link[aria-pressed="true"] { @apply bg-surface font-semibold text-brand; box-shadow: var(--shadow-panel); }
   .form-grid { @apply grid grid-cols-2 gap-3; }
+  .batch-entry-list { @apply overflow-y-auto; max-height: 40dvh; padding: var(--size-space-xs); margin: calc(-1 * var(--size-space-xs)); scroll-padding-top: var(--size-touch); }
+  .batch-entry-row { @apply grid items-center gap-2 border-b border-line pb-2; grid-template-columns: minmax(0, 1fr) repeat(2, calc(var(--size-touch) + var(--size-space-xs))) var(--size-touch); }
+  .batch-entry-row + .batch-entry-row { margin-top: var(--size-space-xs); }
+  .batch-entry-header { @apply sticky z-10 bg-surface-muted text-xs font-medium text-muted; top: calc(-1 * var(--size-space-xs)); padding-block: var(--size-space-sm); }
+  .batch-entry-add { @apply mt-2 w-full justify-start border border-dashed border-control-line bg-surface-muted text-brand hover:bg-sage; }
+  .batch-quantity { @apply min-w-0 px-1 text-center tabular-nums; appearance: textfield; }
+  .batch-quantity::-webkit-inner-spin-button, .batch-quantity::-webkit-outer-spin-button { appearance: none; margin: 0; }
+  @media (min-width: 40rem) {
+    .batch-entry-row { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr) var(--size-touch); }
+  }
   .span-full { grid-column: 1 / -1; }
   .modal-surface { @apply m-auto overflow-y-auto border border-line bg-surface p-0 text-foreground; width: min(var(--size-dialog-width), calc(100% - 2 * var(--size-layout-gutter))); max-height: calc(100dvh - var(--size-space-lg)); border-radius: var(--size-radius-panel); box-shadow: var(--shadow-dialog); }
   .modal-surface::backdrop { background: var(--overlay); }
@@ -166,6 +178,10 @@ button, a {
     .morph-add, .morph-menu path { transition: none; }
   }
   .modal-content { padding: var(--size-panel-padding); }
+  @media (max-width: 39.999rem) {
+    .modal-fluid { width: calc(100% - 2 * var(--size-space-xs)); max-width: none; }
+    .modal-fluid .modal-content { padding: var(--size-space-sm); }
+  }
   .section-separated { @apply border-t border-line; margin-top: var(--size-section-gap); padding-top: var(--size-space-md); }
   .disclosure { @apply border-b border-line; padding-block: var(--size-space-xs); }
   .disclosure-trigger { @apply cursor-pointer font-semibold; min-height: var(--size-touch); align-content: center; }

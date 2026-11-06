@@ -11,7 +11,7 @@ import { renameHousehold } from "@/lib/households/update";
 import { consumeRateLimit } from "@/lib/auth/rate-limit";
 import { sendAccountEmail, sendInvitationEmail } from "@/lib/email/account-email";
 import { acceptFamilyInvitation, getFamilyInvitation, inviteFamilyMember, removeFamilyMember, revokeFamilyInvitation, type FamilyActor } from "@/lib/households/family";
-import { createProduct, editProduct, adjustStock, correctStock, setProductArchived, undoStockMovement, saveCategory, deleteCategory } from "@/lib/inventory/mutations";
+import { createProduct, createProducts, editProduct, adjustStock, correctStock, setProductArchived, undoStockMovement, saveCategory, deleteCategory } from "@/lib/inventory/mutations";
 import { getInventoryProduct, listInventory, listInventoryActivity } from "@/lib/inventory/queries";
 import InventoryRequest from "@/models/InventoryRequest";
 import { randomUUID } from "node:crypto";
@@ -500,6 +500,80 @@ describe("shared inventory workflows", () => {
     otherHome = await createHousehold(outsider.id, 0, "Hogar privado");
     await Membership.create({ householdId: home, userId: member.id });
     productId = (await createProduct(owner, home, randomUUID(), input)).id;
+  });
+
+  const batch = { categoryId: null, names: ["Atún", "Maíz", "Sal"], quantities: ["2", "3", "0"], thresholds: ["1", "", "0"] };
+
+  it("creates a shared-category batch with traceable receipts and deduplicates retries", async () => {
+    const category = await Category.findOne({ householdId: home });
+    const payload = { ...batch, categoryId: category!._id.toString() };
+    const requestId = "x".repeat(128);
+    const result = await createProducts(member, home, requestId, payload);
+    expect(await createProducts(member, home, requestId, payload)).toEqual(result);
+    const products = await Product.find({ householdId: home, name: { $in: batch.names } }).sort({ name: 1 });
+    expect(products).toHaveLength(3);
+    expect(products.every((p) => p.unit === "unidades" && p.categoryId!.equals(category!._id))).toBe(true);
+    expect(products.find((p) => p.name === "Maíz")!.lowStockThreshold).toBeNull();
+    expect(products.find((p) => p.name === "Sal")!.lowStockThreshold).toBe(0);
+    const movements = await StockMovement.find({ householdId: home, productId: { $in: products.map((p) => p._id) } });
+    expect(movements).toHaveLength(2);
+    expect(movements.every((m) => m.actorId.toString() === member.id && m.quantityBefore === 0 && m.quantityAfter === m.delta && m.requestId.length === 64)).toBe(true);
+    await expect(createProducts(member, home, requestId, { ...payload, quantities: ["1", "3", "0"] })).rejects.toThrow("otra operación");
+    await Membership.deleteOne({ householdId: home, userId: member.id });
+    await expect(createProducts(member, home, requestId, payload)).rejects.toThrow("permiso");
+  });
+
+  it("accepts 50 uncategorized zero-stock products without creating receipt movements", async () => {
+    const payload = { categoryId: null, names: Array.from({ length: 50 }, (_, index) => `Producto ${index + 1}`), quantities: Array(50).fill("0"), thresholds: Array(50).fill("") };
+    const result = await createProducts(owner, home, randomUUID(), payload);
+    expect(result.movementId).toBeNull();
+    const products = await Product.find({ householdId: home, name: { $in: payload.names } });
+    expect(products).toHaveLength(50);
+    expect(products.every((product) => product.quantity === 0 && product.categoryId === null && product.lowStockThreshold === null)).toBe(true);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(1);
+  });
+
+  it("applies concurrent retries of a product batch only once", async () => {
+    const requestId = randomUUID();
+    const results = await Promise.all(Array.from({ length: 3 }, () => createProducts(member, home, requestId, batch)));
+    expect(results.every((result) => result.id === results[0].id && result.movementId === results[0].movementId)).toBe(true);
+    expect(await Product.countDocuments({ householdId: home, name: { $in: batch.names } })).toBe(3);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(3);
+    expect(await InventoryRequest.countDocuments({ householdId: home, requestId })).toBe(1);
+  });
+
+  it("rejects empty, oversized, mismatched and invalid rows before creating anything", async () => {
+    for (const payload of [
+      { ...batch, names: [] }, { ...batch, names: Array(51).fill("Sal"), quantities: Array(51).fill("0"), thresholds: Array(51).fill("") },
+      { ...batch, quantities: ["1"] }, { ...batch, thresholds: [] },
+      { ...batch, names: ["Atún", " ", "Sal"] }, { ...batch, quantities: ["2", "-1", "0"] },
+      { ...batch, thresholds: ["1", "1.5", "0"] },
+    ]) await expect(createProducts(owner, home, randomUUID(), payload)).rejects.toThrow();
+    expect(await Product.countDocuments({ householdId: home })).toBe(1);
+  });
+
+  it("denies batch creation across household, verification, and session boundaries", async () => {
+    const foreignCategory = await Category.findOne({ householdId: otherHome });
+    await expect(createProducts(owner, home, randomUUID(), { ...batch, categoryId: foreignCategory!._id.toString() })).rejects.toThrow("no pertenece");
+    await expect(createProducts(outsider, home, randomUUID(), batch)).rejects.toThrow("permiso");
+    await User.updateOne({ _id: member.id }, { $set: { emailVerifiedAt: null } });
+    await expect(createProducts(member, home, randomUUID(), batch)).rejects.toThrow("verifica");
+    await expect(createProducts({ ...owner, sessionVersion: 99 }, home, randomUUID(), batch)).rejects.toThrow("Inicia sesión");
+    expect(await Product.countDocuments({ householdId: home })).toBe(1);
+  });
+
+  it("rolls back the entire batch and earlier receipts when a later receipt fails", async () => {
+    const requestId = randomUUID();
+    const originalCreate = StockMovement.create.bind(StockMovement);
+    const fail = vi.spyOn(StockMovement, "create").mockImplementationOnce(originalCreate).mockRejectedValueOnce(new Error("Receipt failed"));
+    try {
+      await expect(createProducts(owner, home, requestId, batch)).rejects.toThrow("Receipt failed");
+      expect(await Product.countDocuments({ householdId: home })).toBe(1);
+      expect(await StockMovement.countDocuments({ householdId: home })).toBe(1);
+      expect(await InventoryRequest.exists({ householdId: home, requestId })).toBeNull();
+    } finally { fail.mockRestore(); }
+    await createProducts(owner, home, requestId, batch);
+    expect(await Product.countDocuments({ householdId: home })).toBe(4);
   });
 
   it("creates basic categories atomically with each new household", async () => {
