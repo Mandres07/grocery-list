@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import sharp from "sharp";
 
 const theme = JSON.parse(readFileSync(new URL("../styles/theme.json", import.meta.url), "utf8"));
@@ -21,3 +21,16 @@ const imageSize = parseInt(theme.sizes["brand-mark"]) * 2;
 const image = await sharp(Buffer.from(svg)).resize(imageSize, imageSize).png().toBuffer();
 writeFileSync(new URL("../styles/email-brand.generated.json", import.meta.url), `${JSON.stringify({ base64: image.toString("base64") })}\n`);
 writeFileSync(new URL("../app/icon.svg", import.meta.url), `${svg}\n`);
+
+// iOS Home Screen icons need a PNG; keep its background opaque because iOS
+// applies its own rounded mask.
+const appleIcon = await sharp(Buffer.from(svg)).resize(180, 180)
+  .flatten({ background: theme.colors.brand }).png().toBuffer();
+writeFileSync(new URL("../app/apple-icon.png", import.meta.url), appleIcon);
+
+mkdirSync(new URL("../public/icons/", import.meta.url), { recursive: true });
+for (const size of [192, 512]) {
+  const icon = await sharp(Buffer.from(svg)).resize(size, size)
+    .flatten({ background: theme.colors.brand }).png().toBuffer();
+  writeFileSync(new URL(`../public/icons/basket-${size}.png`, import.meta.url), icon);
+}
