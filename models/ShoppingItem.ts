@@ -13,6 +13,7 @@ export interface IShoppingItem extends Timestamps {
   status: "pending" | "purchased" | "received";
   addedById: Types.ObjectId;
   receivedMovementId: Types.ObjectId | null;
+  receiptId: string | null;
 }
 
 const schema = new Schema<IShoppingItem>({
@@ -26,10 +27,12 @@ const schema = new Schema<IShoppingItem>({
   receivedAt: { type: Date, default: null },
   status: { type: String, required: true, enum: ["pending", "purchased", "received"], default: "pending" },
   addedById: { type: objectId, ref: "User", required: true },
+  receiptId: { type: String, default: null, maxlength: 128 },
   receivedMovementId: { type: objectId, ref: "StockMovement", default: null },
 }, schemaOptions);
 
 schema.index({ householdId: 1, status: 1, createdAt: -1 });
 schema.index({ householdId: 1, receivedMovementId: 1 }, { unique: true, partialFilterExpression: { receivedMovementId: { $type: "objectId" } } });
+
 
 export default (models.ShoppingItem as Model<IShoppingItem> | undefined) ?? model<IShoppingItem>("ShoppingItem", schema);

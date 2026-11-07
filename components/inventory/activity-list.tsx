@@ -13,7 +13,7 @@ export function ActivityList({ householdId, movements, expanded = false, filtere
       <span className={item.delta > 0 ? "symbol-muted text-brand" : "symbol-soft"}><Icon name={item.reason === "undo" ? "history" : "arrow"} className={`glyph-icon ${item.reason !== "undo" && item.delta > 0 ? "rotate-180" : ""}`} /></span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-3"><p className="text-sm font-semibold break-words">{item.productName}</p><span className={`label-soft tabular-nums ${item.delta > 0 ? "text-brand" : "text-accent"}`}>{item.delta > 0 ? "+" : ""}{item.delta}</span></div>
-        <p className="text-xs leading-5 text-muted">{reasons[item.reason]} · {item.actorName}{item.quantityBefore !== null && item.quantityBefore !== undefined && <> · {item.quantityBefore} → {item.quantityAfter}</>}</p>
+        <p className="text-xs leading-5 text-muted">{item.purchaseReceipt ? "Recepción de compra" : reasons[item.reason]} · {item.actorName}{item.quantityBefore !== null && item.quantityBefore !== undefined && <> · {item.quantityBefore} → {item.quantityAfter}</>}</p>
         {item.createdAt && <time className="block text-xs leading-5 text-muted" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("es", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Panama" })}</time>}
       </div>
       {item.canUndo && <div className="event-action"><ActionForm action={inventoryAction} requestId={randomUUID()} submitIcon="history" submitLabel="Deshacer" submitAriaLabel={`Deshacer movimiento de ${item.productName}`} submitClassName="action-quiet action-icon action-compact text-muted hover:text-brand" hiddenFields={{ kind: "undo-stock", householdId, movementId: item.id }} /></div>}

@@ -15,7 +15,7 @@ import { listInventory, listInventoryCategories, listInventoryActivity } from "@
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(inventoryPageContext).mockResolvedValue({ householdId: "a".repeat(24), user: { id: "b".repeat(24), name: "Ana", email: "ana@example.test", emailVerified: true, sessionVersion: 0 } });
-  vi.mocked(listInventory).mockResolvedValue({ products: [], categories: [], total: 0 });
+  vi.mocked(listInventory).mockResolvedValue({ page: 1, pageCount: 1, products: [], categories: [], total: 0 });
   vi.mocked(listInventoryCategories).mockResolvedValue([]);
   vi.mocked(listInventoryActivity).mockResolvedValue([]);
 });
@@ -47,7 +47,7 @@ describe("inventory sections", () => {
   });
 
   it("groups product details and stock controls in a responsive table", async () => {
-    vi.mocked(listInventory).mockResolvedValue({ total: 1, categories: [{ id: "c".repeat(24), name: "Despensa", parentId: null }], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 3, revision: 0, categoryId: "c".repeat(24), lowStockThreshold: 1, archived: false }] });
+    vi.mocked(listInventory).mockResolvedValue({ page: 1, pageCount: 1, total: 1, categories: [{ id: "c".repeat(24), name: "Despensa", parentId: null }], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 3, revision: 0, categoryId: "c".repeat(24), lowStockThreshold: 1, archived: false }] });
     const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain('class="table-responsive table-compact"');
     expect(html).toContain('<th scope="col">Producto</th>');
@@ -63,7 +63,7 @@ describe("inventory sections", () => {
   });
 
   it.each([{ quantity: 0, expected: "Sin existencias" }, { quantity: 1, expected: "Por reponer" }])("shows $expected clearly in product rows", async ({ quantity, expected }) => {
-    vi.mocked(listInventory).mockResolvedValue({ total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity, revision: 0, categoryId: null, lowStockThreshold: 1, archived: false }] });
+    vi.mocked(listInventory).mockResolvedValue({ page: 1, pageCount: 1, total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity, revision: 0, categoryId: null, lowStockThreshold: 1, archived: false }] });
     const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain(expected + "</span>");
     expect(html).toContain('data-stock-status="' + (quantity === 0 ? "out" : "low") + '"');
@@ -72,7 +72,7 @@ describe("inventory sections", () => {
   });
 
   it("labels zero stock without a configured warning", async () => {
-    vi.mocked(listInventory).mockResolvedValue({ total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 0, revision: 0, categoryId: null, lowStockThreshold: null, archived: false }] });
+    vi.mocked(listInventory).mockResolvedValue({ page: 1, pageCount: 1, total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 0, revision: 0, categoryId: null, lowStockThreshold: null, archived: false }] });
     const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Sin existencias</span>");
     expect(html).toContain("Por comprar primero");
@@ -80,7 +80,7 @@ describe("inventory sections", () => {
   });
 
   it("keeps archived quantities visible without offering stock changes", async () => {
-    vi.mocked(listInventory).mockResolvedValue({ total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 3, revision: 0, categoryId: null, lowStockThreshold: 1, archived: true }] });
+    vi.mocked(listInventory).mockResolvedValue({ page: 1, pageCount: 1, total: 1, categories: [], products: [{ id: "d".repeat(24), name: "Arroz", unit: "paquetes", quantity: 3, revision: 0, categoryId: null, lowStockThreshold: 1, archived: true }] });
     const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({ archived: "yes" }) }));
     expect(html).toContain("Abre el producto para restaurarlo");
     expect(html).toContain("Archivado</span>");
@@ -100,8 +100,9 @@ describe("inventory sections", () => {
     expect(html).toContain("Limpiar filtros");
     expect(html).not.toMatch(/<dialog[^>]*\bopen[ =>]/);
     expect(html).not.toContain("filter-toolbar");
-    expect(listInventory).toHaveBeenCalledWith(expect.anything(), expect.anything(), { query: "Arroz", lowStock: true, archived: false });
+    expect(listInventory).toHaveBeenCalledWith(expect.anything(), expect.anything(), { query: "Arroz", lowStock: true, archived: false, page: 1 });
   });
+
 
   it("renders category management independently of the product form", async () => {
     const html = renderToStaticMarkup(await CategoriesPage({ searchParams: Promise.resolve({}) }));
@@ -128,7 +129,7 @@ describe("inventory sections", () => {
   });
 
   it("keeps activity details and eligible undo commands in the compact feed", async () => {
-    vi.mocked(listInventoryActivity).mockResolvedValue([{ id: "c".repeat(24), productId: "d".repeat(24), productName: "Arroz", actorName: "Ana", delta: 1, reason: "receipt", quantityBefore: 2, quantityAfter: 3, createdAt: "2026-11-04T12:00:00.000Z", canUndo: true }]);
+    vi.mocked(listInventoryActivity).mockResolvedValue([{ id: "c".repeat(24), productId: "d".repeat(24), productName: "Arroz", actorName: "Ana", delta: 1, reason: "receipt", quantityBefore: 2, quantityAfter: 3, createdAt: "2026-11-04T12:00:00.000Z", purchaseReceipt: false, canUndo: true }]);
     const html = renderToStaticMarkup(await ActivityPage({ searchParams: Promise.resolve({}) }));
     expect(html).toContain("Arroz");
     expect(html).toContain("+1");
@@ -137,8 +138,28 @@ describe("inventory sections", () => {
     expect(html).toContain('aria-label="Deshacer movimiento de Arroz"');
     expect(html).toContain('name="kind" value="undo-stock"');
     expect(html).toContain('name="movementId" value="' + "c".repeat(24) + '"');
-    vi.mocked(listInventoryActivity).mockResolvedValue([{ id: "c".repeat(24), productId: "d".repeat(24), productName: "Arroz", actorName: "Ana", delta: -1, reason: "undo", quantityBefore: 3, quantityAfter: 2, createdAt: null, canUndo: false }]);
+    vi.mocked(listInventoryActivity).mockResolvedValue([{ id: "c".repeat(24), productId: "d".repeat(24), productName: "Arroz", actorName: "Ana", delta: -1, reason: "undo", quantityBefore: 3, quantityAfter: 2, createdAt: null, purchaseReceipt: false, canUndo: false }]);
     expect(renderToStaticMarkup(await ActivityPage({ searchParams: Promise.resolve({}) }))).not.toContain('name="kind" value="undo-stock"');
+  });
+
+  it("labels shopping receipts and keeps the last-50 notice below the movements", async () => {
+    vi.mocked(listInventoryActivity).mockResolvedValue([{ id: "c".repeat(24), productId: "d".repeat(24), productName: "Compra de arroz", actorName: "Ana", delta: 1, reason: "receipt", quantityBefore: 2, quantityAfter: 3, createdAt: null, purchaseReceipt: true, canUndo: false }]);
+    const html = renderToStaticMarkup(await ActivityPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("Recepción de compra · Ana");
+    expect(html.indexOf("Se muestran los últimos 50 movimientos.")).toBeGreaterThan(html.indexOf("Compra de arroz"));
+  });
+
+  it("shows the category cap and prevents creation from both category and product forms", async () => {
+    const categories = Array.from({ length: 25 }, (_, index) => ({ id: String(index), name: `Categoría ${index}`, parentId: null }));
+    vi.mocked(listInventoryCategories).mockResolvedValue(categories);
+    const html = renderToStaticMarkup(await CategoriesPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain("Límite de 25 categorías alcanzado.");
+    expect(html).toContain("25 de 25 categorías");
+    expect(html).not.toContain('aria-label="Agregar categoría"');
+    expect(html).toContain('aria-label="Editar Categoría 0"');
+    vi.mocked(listInventory).mockResolvedValue({ products: [], categories, total: 0, page: 1, pageCount: 1 });
+    const inventory = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({}) }));
+    expect(inventory).not.toContain("+ Crear categoría…");
   });
 
   it("shows activity filters in the shared modal and passes normalized values to the query", async () => {

@@ -55,7 +55,7 @@ export function ProductTable({ householdId, products, categories, total = produc
     setConfirmedStock((current) => ({ ...current, [id]: current[id] ? latestStock(current[id], incoming) : incoming }));
   }
   return <>
-    <p className="mt-4 text-xs text-muted">{visibleTotal} {visibleTotal === 1 ? "producto encontrado" : "productos encontrados"}{!archived && visibleTotal > 0 && " · Por comprar primero"}{visibleTotal > 100 && ". Se muestran hasta 100 productos; usa la búsqueda para encontrar el resto."}</p>
+    <p className="mt-4 text-xs text-muted">{visibleTotal} {visibleTotal === 1 ? "producto encontrado" : "productos encontrados"}{!archived && visibleTotal > 0 && " · Por comprar primero"}</p>
     {visible.length === 0 ? <p className="notice mt-4">No hay productos en esta vista. Agrega el primero o cambia los filtros.</p> : <div className="collection-surface mt-2"><table className="table-responsive table-compact" role="table">
     <caption className="sr-only">Productos del inventario y existencias en casa</caption>
     <thead role="rowgroup"><tr role="row"><th scope="col">Producto</th><th scope="col">Categoría</th><th scope="col">Unidad</th><th scope="col">Existencias</th></tr></thead>

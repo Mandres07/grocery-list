@@ -33,7 +33,7 @@ Crear una categoría desde el formulario de producto guarda ambos registros en l
 6. Abre el producto para editar datos o corregir la cantidad total contada. Si otra persona actualizó el producto, una corrección o edición basada en datos viejos debe pedir actualizar, sin sobrescribir el cambio ajeno.
 7. Abre la sección **Actividad** y deshaz un movimiento. El ajuste contrario usa las existencias actuales y conserva movimientos posteriores. No se puede deshacer dos veces ni deshacer un movimiento de deshacer. Si produciría una cantidad negativa, se rechaza.
 8. Archiva y busca en **Estado → Archivados**. Se conservan existencias y actividad; restaura antes de volver a ajustar.
-9. Busca por nombre, filtra por categoría (incluye descendientes) y por **Por reponer**. Se muestran hasta 100 productos coincidentes; la búsqueda permite encontrar los demás. La actividad muestra los últimos 50 movimientos.
+9. Busca por nombre, filtra por categoría (incluye descendientes) y por **Por reponer**. Se muestran 25 productos por página; los controles de navegación conservan los filtros. La actividad muestra los últimos 50 movimientos.
 10. Simula una desconexión. No se aceptan escrituras sin conexión ni se encolan automáticamente. Al recuperar internet, reintenta la operación pendiente: conserva su identificador y datos para no aplicarse dos veces.
 11. Retira un miembro desde la cuenta propietaria y comprueba que sus siguientes lecturas y escrituras fallen, aunque conserve una sesión. El historial anterior permanece.
 
@@ -95,7 +95,7 @@ Filters apply in the database before the 50-movement limit. Product matches stay
 
 Active products appear automatically in buying order: zero stock first, then positive quantities at or below their warning threshold, then adequately stocked products. Each group uses Spanish alphabetical order, ignoring capitalization and accents while keeping ñ after n; alphabetically equivalent names use stable IDs as a tie-breaker. Database pagination and client reordering use matching collation rules. Zero stock needs no configured threshold. Labels “Sin existencias” and “Por reponer”, plus narrow accent markers, make urgency visible in both desktop tables and compact mobile rows. Archived products retain alphabetical order and do not receive buying labels.
 
-Ranking and filtering apply before the 100-product database limit. The “Por reponer” filter includes zero stock without a threshold; missing legacy thresholds normalize to null. Search/category filters and household access checks remain in place.
+Ranking and filtering apply before the 25-product page offset and limit. The “Por reponer” filter includes zero stock without a threshold; missing legacy thresholds normalize to null. Search/category filters and household access checks remain in place.
 
 ProductTable has a small client boundary to reconcile confirmed stock responses by revision. Quantity labels, badges, and row status update immediately; row order and low-stock filter removal wait 1.5 seconds after all adjustments settle, resetting on another adjustment. Delayed refreshes cannot overwrite a newer confirmed quantity. Failed or uncertain writes retain the existing retry/deduplication workflow and do not report a new stock status.
 
@@ -106,3 +106,11 @@ The Compras navigation item opens the shared `/shopping` list. Its confirmed “
 Inventory now shares the shopping compact stepper: 32px adjustment buttons, a quantity column using the same compact-width token, and table-compact links/row alignment. Names wrap to at most two lines on both screen sizes, with status badges preserved. Compact size changes do not alter immediate stock persistence, revision reconciliation, or uncertain retry behavior.
 
 Stock adjustments save immediately and update quantity/status without moving the row. After all in-flight adjustments finish, the list waits 1.5 seconds without another adjustment before reapplying priority order and low-stock filtering. Each new adjustment restarts the delay; changing filters starts a fresh list. Timers are cleared on unmount.
+
+## List sizes
+
+Inventory retrieves 25 products per page in MongoDB, preserving stock priority, Spanish name order and ID ties. URL-based page controls preserve filters; applying filters resets to page one. Invalid pages fall back to one and pages beyond the result set clamp to the last available page. Mobile uses Previous/Next and a page indicator; desktop also exposes nearby page numbers. Live stock changes can move products between pages on refresh.
+
+Households can have 25 categories total, including subcategories and defaults. Creation is checked inside the existing serialized household transaction, including inline product creation. Existing categories remain readable/editable/deletable even if historical data exceeds the cap; none are deleted automatically. Default initialization respects remaining capacity.
+
+Activity continues to show the latest 50 matching stock movements with the limit explained below the list. Movements linked to received shopping items are labeled **Recepción de compra** individually. Custom shopping items have no stock movement because they do not change inventory.

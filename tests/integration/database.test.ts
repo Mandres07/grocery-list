@@ -604,6 +604,17 @@ describe("shared inventory workflows", () => {
     expect(await Category.exists({ householdId: home, name: "Mis bebidas" })).not.toBeNull();
   });
 
+  it("respects the category cap while initializing legacy households", async () => {
+    await Household.updateOne({ _id: home }, { $unset: { defaultCategoriesInitializedAt: 1 } });
+    await Category.deleteMany({ householdId: home });
+    await Category.insertMany(Array.from({ length: 24 }, (_, index) => ({ householdId: home, name: `Personalizada ${index}` })));
+    await ensureDefaultCategories(owner, home);
+    expect(await Category.countDocuments({ householdId: home })).toBe(25);
+    expect((await Household.findById(home))!.defaultCategoriesInitializedAt).toBeInstanceOf(Date);
+    await ensureDefaultCategories(member, home);
+    expect(await Category.countDocuments({ householdId: home })).toBe(25);
+  });
+
   it("denies default initialization to outsiders, unverified members, and stale sessions", async () => {
     await Household.updateOne({ _id: home }, { $unset: { defaultCategoriesInitializedAt: 1 } });
     await expect(ensureDefaultCategories(outsider, home)).rejects.toThrow("permiso");
@@ -884,6 +895,47 @@ describe("shared inventory workflows", () => {
     expect((await Category.find({ householdId: home }).lean()).map((item) => item.name).sort()).toEqual([...DEFAULT_CATEGORY_NAMES].sort());
   });
 
+  it("enforces the shared 25-category limit across concurrent and inline creation", async () => {
+    const existing = await Category.countDocuments({ householdId: home });
+    await Category.insertMany(Array.from({ length: 24 - existing }, (_, index) => ({ householdId: home, name: `Extra ${index}` })));
+    const attempts = await Promise.allSettled([
+      saveCategory(owner, home, randomUUID(), { name: "Última principal", parentId: null }),
+      saveCategory(member, home, randomUUID(), { name: "Última subcategoría", parentId: (await Category.findOne({ householdId: home }))!._id.toString() }),
+    ]);
+    expect(attempts.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    expect(attempts.find((result) => result.status === "rejected")).toMatchObject({ reason: { message: expect.stringContaining("25 categorías") } });
+    expect(await Category.countDocuments({ householdId: home })).toBe(25);
+    await expect(createProduct(member, home, randomUUID(), { ...input, name: "No guardar", newCategoryName: "Exceso" })).rejects.toThrow("25 categorías");
+    await expect(editProduct(owner, home, randomUUID(), productId, 0, { ...input, newCategoryName: "Exceso" })).rejects.toThrow("25 categorías");
+    expect(await Product.exists({ householdId: home, name: "No guardar" })).toBeNull();
+    const category = (await Category.findOne({ householdId: home, name: "Despensa" }))!;
+    await expect(saveCategory(member, home, randomUUID(), { id: category._id.toString(), name: "Renombrada", parentId: null })).resolves.toBeDefined();
+    await expect(createProduct(owner, home, randomUUID(), { ...input, name: "Reutiliza", newCategoryName: "Renombrada" })).resolves.toBeDefined();
+    await deleteCategory(owner, home, randomUUID(), (await Category.findOne({ householdId: home, name: "Extra 0" }))!._id.toString());
+    await expect(saveCategory(member, home, randomUUID(), { name: "Disponible", parentId: null })).resolves.toBeDefined();
+  });
+
+  it("paginates all inventory and archives, clamps pages, and searches beyond page one", async () => {
+    await Product.insertMany(Array.from({ length: 55 }, (_, index) => ({ householdId: home, name: `Producto ${index}`, quantity: 0 })));
+    const first = await listInventory(owner, home);
+    const second = await listInventory(member, home, { page: 2 });
+    const last = await listInventory(owner, home, { page: 999999 });
+    expect(first).toMatchObject({ page: 1, pageCount: 3, total: 56 });
+    expect(first.products).toHaveLength(25);
+    expect(second.products).toHaveLength(25);
+    expect(last).toMatchObject({ page: 3, pageCount: 3 });
+    expect(last.products).toHaveLength(6);
+    expect(new Set([...first.products, ...second.products, ...last.products].map((item) => item.id)).size).toBe(56);
+    expect((await listInventory(owner, home, { page: -1 })).page).toBe(1);
+    expect((await listInventory(owner, home, { query: "Arroz", page: 3 })).products.map((item) => item.id)).toEqual([productId]);
+    expect(await listInventory(owner, home, { query: "Ausente", page: 3 })).toMatchObject({ page: 1, pageCount: 1, total: 0, products: [] });
+    await Product.updateMany({ householdId: home }, { $set: { archivedAt: new Date() } });
+    const archive = await listInventory(member, home, { archived: true, page: 2 });
+    expect(archive).toMatchObject({ page: 2, total: 56 });
+    expect(archive.products).toHaveLength(25);
+    expect((await listInventory(owner, home)).total).toBe(0);
+  });
+
   it("prioritizes empty and threshold stock before the page limit, alphabetically within each group", async () => {
     await Product.insertMany([
       ...Array.from({ length: 110 }, (_, index) => ({ householdId: home, name: `A normal ${String(index).padStart(3, "0")}`, quantity: 10, lowStockThreshold: 1 })),
@@ -896,7 +948,7 @@ describe("shared inventory workflows", () => {
     await Product.create({ householdId: otherHome, name: "Otro hogar agotado", quantity: 0 });
     const result = await listInventory(member, home);
     expect(result.total).toBe(116);
-    expect(result.products).toHaveLength(100);
+    expect(result.products).toHaveLength(25);
     expect(result.products.slice(0, 3).map((item) => item.name)).toEqual(["A agotado", "Z agotado", "Z por reponer"]);
     expect(result.products.some((item) => item.name === "Otro hogar agotado")).toBe(false);
     const low = await listInventory(owner, home, { lowStock: true });
@@ -1121,7 +1173,7 @@ describe("shared inventory workflows", () => {
     await setShoppingPurchased(member, home, randomUUID(), custom.id, 0, true);
     const selected = await purchasedReceiptItems(owner, home);
     expect(selected).toHaveLength(3);
-    const requestId = "x".repeat(128);
+    const requestId = randomUUID();
     const received = await receivePurchasedItems(owner, home, requestId, JSON.stringify(selected));
     expect((await getInventoryProduct(owner, home, productId))?.quantity).toBe(5);
     expect((await getInventoryProduct(owner, home, milk.id))?.quantity).toBe(2);
@@ -1196,15 +1248,56 @@ describe("shared inventory workflows", () => {
     await expect(purchasedReceiptItems(member, home)).rejects.toThrow("No tienes permiso");
   });
 
-  it("receives all purchased entries beyond the 100-row display limit", async () => {
+  it("displays and receives every purchased entry beyond 100 items", async () => {
     await ShoppingItem.insertMany(Array.from({ length: 101 }, (_, index) => ({ householdId: home, addedById: owner.id, name: `Artículo ${index}`, quantity: 1, status: "purchased" })));
     const selected = await purchasedReceiptItems(member, home);
     expect(selected).toHaveLength(101);
     const page = await listShoppingItems(owner, home, "purchased");
-    expect(page.items).toHaveLength(100);
-    expect(page.receiptItems.slice(0, 100)).toEqual(page.items.map(({ id, revision, quantity }) => ({ id, revision, quantity })));
+    expect(page.items).toHaveLength(101);
+    expect(page.receiptItems).toEqual(page.items.map(({ id, revision, quantity }) => ({ id, revision, quantity })));
     await receivePurchasedItems(member, home, randomUUID(), selected);
     expect(await purchasedReceiptItems(owner, home)).toEqual([]);
     expect((await listShoppingItems(owner, home, "received")).total).toBe(101);
+
   });
+  it("shows every pending item and only the latest received purchase, with individually labeled movements", async () => {
+    const earlier = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 1, name: "", unit: "" });
+    await setShoppingPurchased(owner, home, randomUUID(), earlier.id, 0, true);
+    await receivePurchasedItems(owner, home, randomUUID(), await purchasedReceiptItems(owner, home));
+    await ShoppingItem.updateOne({ _id: earlier.id }, { $set: { receivedAt: new Date("2020-01-01") } });
+    const latest = await addShoppingItem(member, home, randomUUID(), { productId, quantity: 3, name: "", unit: "" });
+    const custom = await addShoppingItem(member, home, randomUUID(), { productId: null, name: "Pan", quantity: 1, unit: "unidad" });
+    for (const id of [latest.id, custom.id]) await setShoppingPurchased(member, home, randomUUID(), id, 0, true);
+    const receiptId = randomUUID();
+    const selected = await purchasedReceiptItems(member, home);
+    await receivePurchasedItems(member, home, receiptId, selected);
+    await receivePurchasedItems(member, home, receiptId, selected);
+    const received = await listShoppingItems(owner, home, "received");
+    expect(new Set(received.items.map((item) => item.id))).toEqual(new Set([latest.id, custom.id]));
+    expect(received.total).toBe(2);
+    expect((await listShoppingItems(owner, home, "received", "Pan")).items.map((item) => item.id)).toEqual([custom.id]);
+    expect(await ShoppingItem.countDocuments({ householdId: home, status: "received" })).toBe(3);
+    const activity = await listInventoryActivity(member, home);
+    expect(activity.filter((movement) => movement.purchaseReceipt)).toHaveLength(2);
+    expect(activity.find((movement) => !movement.purchaseReceipt)?.reason).toBe("receipt");
+    await ShoppingItem.insertMany(Array.from({ length: 105 }, (_, index) => ({ householdId: home, addedById: owner.id, name: `Pendiente ${index}`, quantity: 1 })));
+    expect((await listShoppingItems(member, home, "pending")).items).toHaveLength(105);
+    expect((await listShoppingItems(member, home, "pending", "Pendiente")).total).toBe(105);
+    const solo = await addShoppingItem(owner, home, randomUUID(), { productId: null, name: "Individual", quantity: 1, unit: "unidad" });
+    await setShoppingPurchased(owner, home, randomUUID(), solo.id, 0, true);
+    await ShoppingItem.updateMany({ householdId: home, status: "received" }, { $set: { receivedAt: new Date("2020-01-01") } });
+    await receiveShoppingItem(owner, home, randomUUID(), solo.id, 1, 1);
+    expect((await listShoppingItems(owner, home, "received")).items.map((item) => item.id)).toEqual([solo.id]);
+  });
+
+  it("keeps activity limited to the latest 50 movements including purchase receipts", async () => {
+    const movements = await StockMovement.insertMany(Array.from({ length: 55 }, (_, index) => ({ householdId: home, productId, actorId: owner.id, delta: 1, reason: "receipt", requestId: `activity-${index}`, createdAt: new Date(2000000000000 + index) })));
+    const latest = movements.at(-1)!;
+    await ShoppingItem.create({ householdId: home, productId, addedById: owner.id, name: "Recibido", quantity: 1, status: "received", receivedMovementId: latest._id });
+    const activity = await listInventoryActivity(member, home);
+    expect(activity).toHaveLength(50);
+    expect(activity[0]).toMatchObject({ id: latest._id.toString(), purchaseReceipt: true });
+    expect(activity.some((movement) => movement.id === movements[0]._id.toString())).toBe(false);
+  });
+
 });

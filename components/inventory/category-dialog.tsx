@@ -1,3 +1,4 @@
+import { MAX_CATEGORIES } from "@/lib/inventory/limits";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { FormField } from "@/components/ui/form-field";
 import { inventoryAction } from "@/app/(account)/inventory/actions";
@@ -7,6 +8,7 @@ import { CategorySelect } from "./category-select";
 export function CategoryDialog({ householdId, categories, category, deleting = false }: {
   householdId: string; categories: InventoryCategory[]; category?: InventoryCategory; deleting?: boolean;
 }) {
+  if (!category && !deleting && categories.length >= MAX_CATEGORIES) return <p className="text-xs text-muted" role="status">Límite de {MAX_CATEGORIES} categorías alcanzado.</p>;
   const title = deleting ? "Eliminar categoría" : category ? "Editar categoría" : "Agregar categoría";
   const triggerLabel = deleting ? "Eliminar" : category ? "Editar" : title;
   const hiddenFields = { householdId, kind: deleting ? "delete-category" : "save-category", ...(category ? { categoryId: category.id } : {}) };

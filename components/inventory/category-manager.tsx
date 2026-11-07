@@ -1,3 +1,4 @@
+import { MAX_CATEGORIES } from "@/lib/inventory/limits";
 import { RecordRow } from "@/components/ui/record-row";
 import { categoryLabels, type InventoryCategory } from "@/lib/inventory/categories";
 import { CategoryDialog } from "./category-dialog";
@@ -16,5 +17,6 @@ export function CategoryManager({ householdId, categories, visibleCategories = c
         </div>
       </RecordRow>
     </li>)}</ul>}
+    <p className="mt-3 text-xs leading-5 text-muted">{categories.length} de {MAX_CATEGORIES} categorías en tu hogar, incluidas las subcategorías.</p>
   </>;
 }

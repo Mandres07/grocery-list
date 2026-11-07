@@ -2,6 +2,7 @@ import mongoose, { type ClientSession, type Types } from "mongoose";
 import Category from "@/models/Category";
 import Household from "@/models/Household";
 import { lockHouseholdAccess, type HouseholdActor } from "@/lib/households/mutation-access";
+import { MAX_CATEGORIES } from "./limits";
 import { requireInventoryReadAccess } from "./queries";
 
 export const DEFAULT_CATEGORY_NAMES = [
@@ -10,10 +11,13 @@ export const DEFAULT_CATEGORY_NAMES = [
 ] as const;
 
 export async function seedDefaultCategories(householdId: Types.ObjectId, session: ClientSession) {
+  let count = await Category.countDocuments({ householdId }).session(session);
   for (const name of DEFAULT_CATEGORY_NAMES) {
-    await Category.updateOne({ householdId, name, parentId: null }, {
+    if (count >= MAX_CATEGORIES) break;
+    const result = await Category.updateOne({ householdId, name, parentId: null }, {
       $setOnInsert: { householdId, name, parentId: null },
     }, { upsert: true, collation: { locale: "es", strength: 2 }, session });
+    count += result.upsertedCount;
   }
 }
 

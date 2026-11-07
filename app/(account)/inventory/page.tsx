@@ -1,3 +1,5 @@
+import { inventoryPage } from "@/lib/inventory/pagination";
+import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { SelectControl } from "@/components/ui/select-control";
 import { inventoryPageContext } from "@/lib/inventory/page-context";
 import { listInventory } from "@/lib/inventory/queries";
@@ -15,7 +17,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const category = typeof params.category === "string" ? params.category : "";
   const lowStock = params.stock === "low";
   const archived = params.archived === "yes";
-  const { products, categories, total } = await listInventory(user, householdId, { query, ...(category ? { categoryId: category } : {}), lowStock, archived });
+  const requestedPage = inventoryPage(params.page);
+  const { products, categories, total, page, pageCount } = await listInventory(user, householdId, { query, ...(category ? { categoryId: category } : {}), lowStock, archived, page: requestedPage });
   const labels = new Map(categoryLabels(categories).map((item) => [item.id, item.label]));
   return <div className="reserve-floating-action"><InventoryShell title="Inventario" description="Organiza los productos de tu hogar y controla sus existencias." active="/inventory" action={<div className="flex items-center gap-2"><ListFilters action="/inventory" label="Buscar producto" placeholder="Nombre del producto" query={query} activeFilters={Boolean(category || lowStock || archived)} key={`${query}:${category}:${lowStock}:${archived}`}>
       <div className="stack">
@@ -25,7 +28,8 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       </div>
     </ListFilters><ProductDialog householdId={householdId} categories={categories} /></div>}>
 
-    <ProductTable key={JSON.stringify([householdId, query, category, lowStock, archived])} householdId={householdId} products={products} categories={labels} total={total} lowStockOnly={lowStock} archived={archived} />
+    <ProductTable key={JSON.stringify([householdId, query, category, lowStock, archived, page])} householdId={householdId} products={products} categories={labels} total={total} lowStockOnly={lowStock} archived={archived} />
+    <InventoryPagination page={page} pageCount={pageCount} total={total} filters={{ ...(query ? { q: query } : {}), ...(category ? { category } : {}), ...(lowStock ? { stock: "low" } : {}), ...(archived ? { archived: "yes" } : {}) }} />
     <RefreshInventory />
   </InventoryShell></div>;
 }

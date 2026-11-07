@@ -10,7 +10,7 @@ import StockMovement from "@/models/StockMovement";
 import InventoryRequest from "@/models/InventoryRequest";
 import { requireCategoryInHousehold, requireProductInHousehold, validateCategoryParent } from "./references";
 import { inventoryName, inventoryRequestId, optionalId, optionalQuantity, wholeNumber } from "./validation";
-import { MAX_PRODUCT_BATCH_SIZE } from "./limits";
+import { MAX_CATEGORIES, MAX_PRODUCT_BATCH_SIZE } from "./limits";
 
 interface Result { id: string; movementId: string | null }
 export interface MutationContext { session: ClientSession; householdId: Types.ObjectId; actorId: Types.ObjectId }
@@ -62,6 +62,12 @@ function categoryDraft(input: Omit<ProductInput, "quantity">) {
   return name ? { name, parentId } : null;
 }
 
+async function requireCategoryCapacity(context: MutationContext) {
+  if (await Category.countDocuments({ householdId: context.householdId }).session(context.session) >= MAX_CATEGORIES) {
+    throw new AccountError(`Tu hogar puede tener hasta ${MAX_CATEGORIES} categorías, incluidas las subcategorías. Elimina una categoría vacía antes de crear otra.`);
+  }
+}
+
 async function resolveProductCategory(context: MutationContext, categoryId: Types.ObjectId | null, draft: ReturnType<typeof categoryDraft>) {
   if (!draft) {
     if (categoryId) await requireCategoryInHousehold(context.householdId, categoryId, context.session);
@@ -70,6 +76,7 @@ async function resolveProductCategory(context: MutationContext, categoryId: Type
   if (draft.parentId) await requireCategoryInHousehold(context.householdId, draft.parentId, context.session);
   const existing = await Category.findOne({ householdId: context.householdId, ...draft }).collation({ locale: "es", strength: 2 }).session(context.session);
   if (existing) return existing._id;
+  await requireCategoryCapacity(context);
   const [category] = await Category.create([{ householdId: context.householdId, ...draft }], { session: context.session });
   return category._id;
 }
@@ -192,7 +199,10 @@ export async function saveCategory(actor: HouseholdActor, householdId: string, r
     if (input.id) await requireCategoryInHousehold(context.householdId, id, context.session);
     await validateCategoryParent(context.householdId, id, parentId, context.session);
     if (input.id) await Category.updateOne({ _id: id, householdId: context.householdId }, { $set: { name, parentId } }, { session: context.session, runValidators: true });
-    else await Category.create([{ _id: id, householdId: context.householdId, name, parentId }], { session: context.session });
+    else {
+      await requireCategoryCapacity(context);
+      await Category.create([{ _id: id, householdId: context.householdId, name, parentId }], { session: context.session });
+    }
     return { id: id.toString(), movementId: null };
   });
 }

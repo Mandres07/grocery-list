@@ -90,7 +90,7 @@ export async function deleteShoppingItem(actor: HouseholdActor, householdId: str
   });
 }
 
-async function receiveItem(context: MutationContext, id: Types.ObjectId, revision: number, quantity: number, requestId: string) {
+async function receiveItem(context: MutationContext, id: Types.ObjectId, revision: number, quantity: number, requestId: string, receiptId = requestId, receivedAt = new Date()) {
   const item = await editableItem(context, id, revision);
   if (item.status !== "purchased") throw new AccountError("Marca el artículo como comprado antes de confirmar la recepción.");
   if (item.productId) {
@@ -100,7 +100,8 @@ async function receiveItem(context: MutationContext, id: Types.ObjectId, revisio
   const movementId = item.productId ? await changeQuantity(context, item.productId, requestId, quantity, "receipt") : null;
   item.status = "received";
   item.receivedQuantity = quantity;
-  item.receivedAt = new Date();
+  item.receivedAt = receivedAt;
+  item.receiptId = receiptId;
   item.receivedMovementId = movementId ? new Types.ObjectId(movementId) : null;
   item.revision = revision + 1;
   await item.save({ session: context.session });
@@ -132,13 +133,14 @@ export function receiptSelection(value: unknown) {
 export async function receivePurchasedItems(actor: HouseholdActor, householdId: string, requestId: string, rawItems: unknown) {
   const selected = receiptSelection(rawItems);
   return mutateInventory(actor, householdId, requestId, "shopping-receive-batch", selected, async (context) => {
+    const receivedAt = new Date();
     // Only the reviewed snapshot is received; later purchases stay in Comprados.
     for (const entry of selected) {
       const id = requireObjectId(entry.id);
       const item = await editableItem(context, id, entry.revision);
       if (item.quantity !== entry.quantity) throw new AccountError("Las cantidades cambiaron. Actualiza la lista antes de recibir la compra.");
       const movementRequestId = createHash("sha256").update(JSON.stringify([requestId, entry.id])).digest("hex");
-      await receiveItem(context, id, entry.revision, entry.quantity, movementRequestId);
+      await receiveItem(context, id, entry.revision, entry.quantity, movementRequestId, requestId, receivedAt);
     }
     return { id: householdId, movementId: null };
   });

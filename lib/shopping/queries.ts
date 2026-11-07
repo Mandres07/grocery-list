@@ -15,16 +15,16 @@ export async function getShoppingItem(actor: HouseholdActor, householdId: string
 
 export async function listShoppingItems(actor: HouseholdActor, householdId: string, status: ShoppingStatus, query = "") {
   const access = await requireInventoryReadAccess(actor, householdId);
-  const filter = { householdId: access.householdId, status, ...(query.trim() ? { name: literalNamePattern(query.trim().slice(0, 160)) } : {}) };
+  // Select the purchase before applying search so older purchases cannot surface through filters.
+  const latestReceipt = status === "received" ? await ShoppingItem.findOne({ householdId: access.householdId, status: "received" }).sort({ receivedAt: -1, _id: -1 }).select("receiptId receivedAt").lean() : null;
+  const receiptFilter = status !== "received" ? {} : latestReceipt?.receiptId ? { receiptId: latestReceipt.receiptId } : latestReceipt ? { receiptId: null, receivedAt: latestReceipt.receivedAt } : { _id: { $in: [] } };
+  const filter = { ...receiptFilter, householdId: access.householdId, status, ...(query.trim() ? { name: literalNamePattern(query.trim().slice(0, 160)) } : {}) };
   // The displayed purchase and its receipt selection must share the same document versions.
   const includeReceipt = status === "purchased" && !query.trim();
-  const [items, total] = await Promise.all([
-    ShoppingItem.find(filter).sort(status === "received" ? { receivedAt: -1, _id: -1 } : { createdAt: 1, _id: 1 }).limit(includeReceipt ? 0 : 100).lean(),
-    includeReceipt ? Promise.resolve(null) : ShoppingItem.countDocuments(filter),
-  ]);
-  return { total: total ?? items.length,
+  const items = await ShoppingItem.find(filter).sort(status === "received" ? { receivedAt: -1, _id: -1 } : { createdAt: 1, _id: 1 }).lean();
+  return { total: items.length,
     receiptItems: includeReceipt ? items.map((item) => ({ id: item._id.toString(), revision: item.revision ?? 0, quantity: item.quantity })) : [],
-    items: items.slice(0, 100).map((item) => ({
+    items: items.map((item) => ({
     id: item._id.toString(), name: item.name, unit: item.unit ?? "unidades", quantity: item.quantity,
     productId: item.productId?.toString() ?? null, status: item.status, revision: item.revision ?? 0,
     receivedQuantity: item.receivedQuantity ?? null, receivedAt: item.receivedAt?.toISOString() ?? null,
