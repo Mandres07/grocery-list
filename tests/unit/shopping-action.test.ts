@@ -45,6 +45,22 @@ describe("shopping action boundary", () => {
     try { expect(await shoppingAction({ success: false, message: "" }, request())).toMatchObject({ success: false, retryable: true }); }
     finally { log.mockRestore(); }
   });
+  it("logs safe receipt diagnostics while keeping raw error details out of logs and responses", async () => {
+    const error = Object.assign(new Error("private connection details"), { name: "StrictModeError", path: "retentionExpiresAt", code: 123 });
+    vi.mocked(receivePurchasedItems).mockRejectedValue(error);
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await shoppingAction({ success: false, message: "" }, request("receive-batch"));
+      expect(result).toMatchObject({ success: false, retryable: true });
+      expect(result.message).not.toContain("private connection details");
+      expect(log).toHaveBeenCalledOnce();
+      const entry = JSON.parse(log.mock.calls[0][0]);
+      expect(entry).toMatchObject({ event: "application.error", operation: "shopping.submit", action: "receive-batch", error: { name: "StrictModeError", path: "retentionExpiresAt", code: 123 } });
+      expect(result.message).toContain(`Referencia: ${entry.errorId}`);
+      expect(log.mock.calls[0][0]).not.toContain("private connection details");
+    } finally { log.mockRestore(); }
+  });
+
   it("does not disclose shopping state after losing membership", async () => {
     vi.mocked(getShoppingItem).mockRejectedValue(new AccountError("Ya no tienes acceso."));
     const result = await shoppingAction({ success: false, message: "" }, request());

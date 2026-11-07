@@ -1,3 +1,4 @@
+import { logAppError, type ErrorOperation } from "@/lib/error-logging";
 import { AccountError } from "@/lib/auth/validation";
 import { APP_NAME } from "@/lib/brand";
 import { buildActionEmail, type EmailContent } from "./template";
@@ -28,7 +29,7 @@ export async function sendAccountEmail(email: string, token: string, purpose: "v
   url.searchParams.set("token", token);
   const subject = purpose === "verification" ? `Verifica tu correo en ${APP_NAME}` : `Restablece tu contraseña de ${APP_NAME}`;
   const expiry = purpose === "verification" ? "24 horas" : "1 hora";
-  await sendTransactionalEmail(email, buildActionEmail({
+  await sendTransactionalEmail(purpose === "verification" ? "email.verification" : "email.reset", email, buildActionEmail({
     subject, title: purpose === "verification" ? "Un paso más para entrar a casa" : "Recupera tu acceso",
     description: purpose === "verification" ? "Confirma tu correo para empezar a organizar tu hogar en familia." : "Recibimos una solicitud para cambiar tu contraseña. Elige una nueva para volver a tu hogar.",
     actionLabel: purpose === "verification" ? "Verificar mi correo" : "Cambiar mi contraseña", url: url.toString(),
@@ -39,28 +40,33 @@ export async function sendAccountEmail(email: string, token: string, purpose: "v
 export async function sendInvitationEmail(email: string, token: string, householdName: string) {
   const url = new URL("/invitation", applicationUrl());
   url.searchParams.set("token", token);
-  await sendTransactionalEmail(email, buildActionEmail({
+  await sendTransactionalEmail("email.invitation", email, buildActionEmail({
     subject: `Te invitaron a un hogar en ${APP_NAME}`, title: "Un hogar para compartir",
     description: `Te invitaron a formar parte de «${householdName}». Usa este mismo correo para crear tu cuenta o iniciar sesión y aceptar la invitación.`,
     actionLabel: "Ver mi invitación", url: url.toString(), expiry: "Esta invitación vence en siete días y solo se puede aceptar una vez.",
   }));
 }
 
-async function sendTransactionalEmail(email: string, content: EmailContent) {
+async function sendTransactionalEmail(operation: ErrorOperation, email: string, content: EmailContent) {
   const { apiKey, from } = emailConfiguration();
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from, to: [email], ...content,
-      attachments: [{ filename: "canasta.png", content: emailBrand.base64, content_id: "brand-basket" }],
-      ...(process.env.RESEND_REPLY_TO_EMAIL?.trim() ? { reply_to: process.env.RESEND_REPLY_TO_EMAIL.trim() } : {}),
-    }),
-    signal: AbortSignal.timeout(15_000),
-  });
-  if (!response.ok) {
-    // Never include provider response bodies: they may contain recipient data.
-    console.error("Account email rejected by Resend", { status: response.status });
-    throw new AccountError("No pudimos enviar el correo. Intenta solicitar otro enlace en unos minutos.");
+  let status: number | undefined;
+  try {
+    const response = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from, to: [email], ...content,
+        attachments: [{ filename: "canasta.png", content: emailBrand.base64, content_id: "brand-basket" }],
+        ...(process.env.RESEND_REPLY_TO_EMAIL?.trim() ? { reply_to: process.env.RESEND_REPLY_TO_EMAIL.trim() } : {}),
+      }),
+      signal: AbortSignal.timeout(15_000),
+    });
+    status = response.status;
+    if (!response.ok) {
+      throw new AccountError("No pudimos enviar el correo. Intenta solicitar otro enlace en unos minutos.");
+    }
+  } catch (error) {
+    logAppError(operation, error, { status });
+    throw error;
   }
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { bulkProductMessage } from "@/lib/inventory/bulk-result";
+import { logAppError, withErrorReference } from "@/lib/error-logging";
 import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { AccountError } from "@/lib/auth/validation";
@@ -57,8 +58,8 @@ export async function inventoryAction(_state: AccountFormState, data: FormData):
     revalidatePath("/", "layout");
     return { success: true, ...(stock ? { stock } : {}), message: kind === "undo-stock" ? "Movimiento deshecho. Se conservaron los cambios posteriores." : "Cambio guardado y compartido con tu hogar.", ...completion };
   } catch (error) {
-    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };
-    console.error("Inventory operation unavailable");
-    return { success: false, retryable: true, message: "No pudimos confirmar el cambio. Reintenta la misma operación; una solicitud repetida no se aplicará dos veces." };
+    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: withErrorReference(error.message, error) };
+    const errorId = logAppError("inventory.submit", error, { action: data.get("kind") });
+    return { success: false, retryable: true, message: withErrorReference("No pudimos confirmar el cambio. Reintenta la misma operación; una solicitud repetida no se aplicará dos veces.", error, errorId) };
   }
 }

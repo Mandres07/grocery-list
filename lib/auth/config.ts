@@ -1,3 +1,4 @@
+import { logAppError } from "@/lib/error-logging";
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { authenticateAccount } from "./accounts";
@@ -31,7 +32,7 @@ export const authOptions: NextAuthOptions = {
         return await authenticateAccount(credentials?.email, credentials?.password);
       } catch (error) {
         if (error instanceof AccountError) return null;
-        console.error("Account sign-in unavailable");
+        logAppError("auth.sign-in", error);
         return null;
       }
     },

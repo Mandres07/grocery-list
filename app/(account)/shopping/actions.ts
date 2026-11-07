@@ -1,5 +1,6 @@
 "use server";
 
+import { logAppError, withErrorReference } from "@/lib/error-logging";
 import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { AccountError } from "@/lib/auth/validation";
@@ -42,9 +43,9 @@ export async function shoppingAction(_state: AccountFormState, data: FormData): 
     revalidatePath("/", "layout");
     return { success: true, message: (kind === "receive" || kind === "receive-batch") ? "Recepción confirmada. Las existencias vinculadas se actualizaron una sola vez." : "Lista guardada y compartida con tu hogar.", ...(item ? { item } : {}) };
   } catch (error) {
-    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };
-    console.error("Shopping operation unavailable");
-    return { success: false, retryable: true, message: "No pudimos confirmar el cambio. Reintenta la misma operación; no se aplicará dos veces." };
+    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: withErrorReference(error.message, error) };
+    const errorId = logAppError("shopping.submit", error, { action: data.get("kind") });
+    return { success: false, retryable: true, message: withErrorReference("No pudimos confirmar el cambio. Reintenta la misma operación; no se aplicará dos veces.", error, errorId) };
   }
 }
 
@@ -53,8 +54,8 @@ export async function searchShoppingProducts(householdId: string, query: string)
   if (typeof query !== "string") return { products: [], message: "Escribe el nombre del producto." };
   try { return { products: await shoppingProductOptions(user, householdId, query), message: "" }; }
   catch (error) {
-    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { products: [], message: error.message };
-    console.error("Shopping product lookup unavailable");
-    return { products: [], message: "No pudimos buscar. Intenta de nuevo." };
+    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { products: [], message: withErrorReference(error.message, error) };
+    const errorId = logAppError("shopping.search", error);
+    return { products: [], message: withErrorReference("No pudimos buscar. Intenta de nuevo.", error, errorId) };
   }
 }

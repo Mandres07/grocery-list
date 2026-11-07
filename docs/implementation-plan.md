@@ -4,7 +4,7 @@
 
 Milestones **1–8 are complete**, with the user's explicit decision to keep **production only** and defer hosted preview deployment. Milestone **9 has not started**. The production app is [Lista de Compras](https://lista-de-compras-beta-eight.vercel.app); it uses fresh accounts, not a migration of the saved local household data.
 
-The latest application checks completed on 2026-11-04 passed lint, TypeScript, **208 unit tests**, **87 disposable local database integration tests**, and production build; npm audit reported zero vulnerabilities. Live browser checks covered signed-out route boundaries and mobile registration. The user confirmed real production registration, verification email/link, household creation, sharing, and password recovery. This is the recorded application verification, not a claim that every later documentation edit reruns those checks.
+The latest application checks completed on 2026-11-06 passed lint, TypeScript, **273 unit tests**, **111 disposable local database integration tests**, and production build. The last recorded dependency audit on 2026-11-04 reported zero vulnerabilities; that audit was not rerun for these feature changes. Live browser checks covered signed-out route boundaries and mobile registration. The user confirmed real production registration, verification email/link, household creation, sharing, and password recovery. This is the recorded application verification, not a claim that every later documentation edit reruns those checks.
 
 Earlier incremental notes and test counts are preserved in [historical implementation notes](history/implementation-notes.md). Those snapshots are not current setup instructions.
 
@@ -69,3 +69,5 @@ Six-month retention follow-up authorized on 2026-11-06: TTL cleanup for movement
 Product-name uniqueness authorized in the same follow-up: household-scoped, case-insensitive names across active and archived products; protected creation/edit/bulk commands plus a database unique index. Existing duplicates require review before installing the index; the read-only maintenance report does not alter products or stock.
 
 Bulk duplicate handling refined on 2026-11-06: accept unique new rows, omit existing/archived names and repeated rows, and show added/omitted counts after success. All-duplicate submissions succeed without stock changes; replayed requests retain their original counts. The user also requested 61 clearly labeled pagination products in the saved local household; production was not seeded.
+
+Standardized server error logging authorized on 2026-11-06: shared JSON diagnostics, operation/action names, opaque error references in action feedback, safe email/provider metadata, and a Next.js server error instrumentation hook. Raw credentials/payloads/errors are excluded; no external logging service was added. See [error logging](error-logging.md).

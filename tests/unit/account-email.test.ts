@@ -58,6 +58,6 @@ describe("account email delivery", () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 403 }));
     await expect(sendAccountEmail("ana@example.test", "a".repeat(64), "verification")).rejects.toThrow("No pudimos enviar");
-    expect(log).toHaveBeenCalledWith("Account email rejected by Resend", { status: 403 });
+    expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({ operation: "email.verification", status: 403, event: "application.error" });
   });
 });

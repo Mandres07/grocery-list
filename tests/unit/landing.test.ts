@@ -73,7 +73,7 @@ describe("shared application header", () => {
       expect(html).toContain("Iniciar sesión");
       expect(html).not.toContain('href="/inventory"');
       expect(html).not.toContain('href="/shopping"');
-      expect(log).toHaveBeenCalledWith("Header account lookup unavailable");
+      expect(JSON.parse(log.mock.calls[0][0])).toMatchObject({ operation: "header.account", event: "application.error" });
     } finally { log.mockRestore(); }
   });
 

@@ -1,5 +1,6 @@
 "use server";
 
+import { logAppError, withErrorReference, type ErrorOperation } from "@/lib/error-logging";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -16,7 +17,7 @@ function field(data: FormData, name: string) {
   return value;
 }
 
-async function familyResult(operation: () => Promise<string>): Promise<AccountFormState> {
+async function familyResult(name: ErrorOperation, operation: () => Promise<string>): Promise<AccountFormState> {
   try {
     const message = await operation();
     revalidatePath("/family");
@@ -24,35 +25,35 @@ async function familyResult(operation: () => Promise<string>): Promise<AccountFo
     revalidatePath("/invitation");
     return { success: true, message };
   } catch (error) {
-    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };
-    console.error("Family operation unavailable");
-    return { success: false, message: "No pudimos completar la solicitud. Revisa tu conexión e intenta de nuevo." };
+    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: withErrorReference(error.message, error) };
+    const errorId = logAppError(name, error);
+    return { success: false, message: withErrorReference("No pudimos completar la solicitud. Revisa tu conexión e intenta de nuevo.", error, errorId) };
   }
 }
 
 export async function inviteMemberAction(_state: AccountFormState, data: FormData) {
   const user = await requireVerifiedUser();
-  return familyResult(() => inviteFamilyMember(user, field(data, "householdId"), data.get("email")));
+  return familyResult("family.invite", () => inviteFamilyMember(user, field(data, "householdId"), data.get("email")));
 }
 
 export async function resendInvitationAction(_state: AccountFormState, data: FormData) {
   const user = await requireVerifiedUser();
-  return familyResult(() => inviteFamilyMember(user, field(data, "householdId"), data.get("email"), field(data, "invitationId")));
+  return familyResult("family.resend", () => inviteFamilyMember(user, field(data, "householdId"), data.get("email"), field(data, "invitationId")));
 }
 
 export async function revokeInvitationAction(_state: AccountFormState, data: FormData) {
   const user = await requireVerifiedUser();
-  return familyResult(() => revokeFamilyInvitation(user, field(data, "householdId"), field(data, "invitationId")));
+  return familyResult("family.revoke", () => revokeFamilyInvitation(user, field(data, "householdId"), field(data, "invitationId")));
 }
 
 export async function removeMemberAction(_state: AccountFormState, data: FormData) {
   const user = await requireVerifiedUser();
-  return familyResult(() => removeFamilyMember(user, field(data, "householdId"), field(data, "memberId")));
+  return familyResult("family.remove-member", () => removeFamilyMember(user, field(data, "householdId"), field(data, "memberId")));
 }
 
 export async function acceptInvitationAction(_state: AccountFormState, data: FormData) {
   const user = await requireVerifiedUser();
-  const result = await familyResult(() => acceptFamilyInvitation(user, data.get("token")));
+  const result = await familyResult("family.accept", () => acceptFamilyInvitation(user, data.get("token")));
   if (!result.success) return result;
   (await cookies()).delete(INVITATION_COOKIE);
   redirect("/inventory");

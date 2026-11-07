@@ -1,3 +1,4 @@
+import { logAppError, withErrorReference } from "@/lib/error-logging";
 import { createHash, randomBytes } from "node:crypto";
 import { connectToDatabase } from "@/lib/db";
 import User from "@/models/User";
@@ -63,9 +64,9 @@ export async function registerAccount(rawName: unknown, rawEmail: unknown, rawPa
   try {
     await requestAccountEmail(email, "verification", true);
     return "Tu cuenta está lista. Confirma tu correo para compartir el hogar y gestionar el inventario.";
-  } catch {
-    console.error("Registration verification email unavailable");
-    return "Tu cuenta está lista. No pudimos enviar la verificación; podrás solicitar otro enlace desde tu cuenta.";
+  } catch (error) {
+    const errorId = logAppError("registration.email", error);
+    return withErrorReference("Tu cuenta está lista. No pudimos enviar la verificación; podrás solicitar otro enlace desde tu cuenta.", error, errorId);
   }
 }
 

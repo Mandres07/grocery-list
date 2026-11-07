@@ -1,3 +1,4 @@
+import { logAppError, withErrorReference } from "@/lib/error-logging";
 import { sixMonthsAfter, unexpiredHistory } from "@/lib/retention";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
@@ -62,9 +63,9 @@ export async function inviteFamilyMember(actor: FamilyActor, householdId: string
   } catch (error) {
     // Do not revoke a newer resend or an invitation already accepted/revoked.
     await Invitation.updateOne({ _id: reservation.id, tokenHash: hash, status: "pending" }, { $set: { status: "revoked" } });
-    console.error("Invitation email unavailable");
+    const errorId = logAppError("family.email", error);
     if (error instanceof AccountError) throw error;
-    throw new AccountError("No pudimos enviar la invitación. Vuelve a invitar a esta persona.");
+    throw new AccountError(withErrorReference("No pudimos enviar la invitación. Vuelve a invitar a esta persona.", error, errorId));
   }
   return "Invitación enviada. El enlace vence en siete días.";
 }

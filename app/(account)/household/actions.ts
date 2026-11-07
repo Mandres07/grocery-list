@@ -1,5 +1,6 @@
 "use server";
 
+import { logAppError, withErrorReference } from "@/lib/error-logging";
 import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { AccountError } from "@/lib/auth/validation";
@@ -16,8 +17,8 @@ export async function renameHouseholdAction(_state: AccountFormState, data: Form
     revalidatePath("/", "layout");
     return { success: true, message };
   } catch (error) {
-    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };
-    console.error("Household rename unavailable");
-    return { success: false, message: "No pudimos guardar el nombre del hogar. Intenta de nuevo en unos minutos." };
+    if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: withErrorReference(error.message, error) };
+    const errorId = logAppError("household.rename", error);
+    return { success: false, message: withErrorReference("No pudimos guardar el nombre del hogar. Intenta de nuevo en unos minutos.", error, errorId) };
   }
 }

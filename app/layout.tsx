@@ -1,3 +1,4 @@
+import { logAppError } from "@/lib/error-logging";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { unstable_rethrow } from "next/navigation";
@@ -25,7 +26,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   const user = await getCurrentUser().catch((error: unknown) => {
     unstable_rethrow(error);
     // Page authorization still fails closed; keep its error UI renderable.
-    console.error("Header account lookup unavailable");
+    logAppError("header.account", error);
     return null;
   });
   return (
