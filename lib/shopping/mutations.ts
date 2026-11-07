@@ -1,3 +1,4 @@
+import { sixMonthsAfter } from "@/lib/retention";
 import { Types } from "mongoose";
 import { createHash } from "node:crypto";
 import ShoppingItem from "@/models/ShoppingItem";
@@ -101,6 +102,7 @@ async function receiveItem(context: MutationContext, id: Types.ObjectId, revisio
   item.status = "received";
   item.receivedQuantity = quantity;
   item.receivedAt = receivedAt;
+  item.retentionExpiresAt = sixMonthsAfter(receivedAt);
   item.receiptId = receiptId;
   item.receivedMovementId = movementId ? new Types.ObjectId(movementId) : null;
   item.revision = revision + 1;

@@ -1,3 +1,4 @@
+import { unexpiredHistory } from "@/lib/retention";
 import { RecordRow } from "@/components/ui/record-row";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -26,7 +27,7 @@ export default async function FamilyPage() {
   const household = await Household.findById(householdId).lean();
   const memberships = await Membership.find({ householdId }).lean();
   const members = await User.find({ _id: { $in: memberships.map((item) => item.userId) } }).select("name email").sort({ name: 1 }).lean();
-  const invitations = await Invitation.find({ householdId }).sort({ createdAt: -1 }).limit(50).lean();
+  const invitations = await Invitation.find({ householdId, ...unexpiredHistory("expiresAt") }).sort({ createdAt: -1 }).limit(50).lean();
   return <>
     <Link href="/household" className="action-secondary mb-6">Volver a mi hogar</Link>
     <h1 className="heading-title">Tu familia</h1>

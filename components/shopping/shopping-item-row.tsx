@@ -1,5 +1,6 @@
 "use client";
 
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import Link from "next/link";
 import { useId, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -33,7 +34,7 @@ export function ShoppingItemRow({ householdId, item, disabled, onChange, onStatu
     if (busy.current || disabled) return;
     if (!request.current) {
       const data = new FormData(event.currentTarget);
-      for (const [key, value] of Object.entries({ householdId, itemId: item.id, revision: String(entry.revision), kind: "purchase", purchased: purchased ? "no" : "yes", requestId: crypto.randomUUID() })) data.set(key, value);
+      for (const [key, value] of Object.entries({ householdId, itemId: item.id, revision: String(entry.revision), kind: "purchase", purchased: purchased ? "no" : "yes", requestId: createInventoryRequestId() })) data.set(key, value);
       request.current = data;
     }
     busy.current = true;

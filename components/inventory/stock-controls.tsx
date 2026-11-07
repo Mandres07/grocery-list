@@ -1,5 +1,6 @@
 "use client";
 
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { latestStock, type StockSnapshot } from "@/lib/inventory/stock-state";
@@ -19,7 +20,7 @@ export function StockControls({ householdId, productId, name, quantity, revision
   async function adjust(delta: number) {
     if (busy.current) return;
     if (request.current && request.current.delta !== delta) return;
-    request.current ??= { id: crypto.randomUUID(), delta };
+    request.current ??= { id: createInventoryRequestId(), delta };
     const data = new FormData();
     for (const [key, value] of Object.entries({ kind: "adjust-stock", householdId, productId, requestId: request.current.id, delta: String(delta) })) data.set(key, value);
     busy.current = true;

@@ -1,3 +1,4 @@
+import { sixMonthsAfter, unexpiredHistory } from "@/lib/retention";
 import mongoose from "mongoose";
 import { randomBytes } from "node:crypto";
 import { connectToDatabase } from "@/lib/db";
@@ -33,15 +34,17 @@ export async function inviteFamilyMember(actor: FamilyActor, householdId: string
       throw new AccountError("Esta persona ya pertenece al hogar.");
     }
     const now = new Date();
+    const expiresAt = new Date(now.getTime() + invitationLifetime);
+    const retentionExpiresAt = sixMonthsAfter(expiresAt);
     if (invitationObjectId) {
       if (await Invitation.exists({ householdId: householdObjectId, email, status: "pending", _id: { $ne: invitationObjectId }, expiresAt: { $gt: now } }).session(session)) {
         throw new AccountError("Ya hay una invitación pendiente más reciente para este correo. Usa esa invitación.");
       }
       await Invitation.updateMany({ householdId: householdObjectId, email, status: "pending", _id: { $ne: invitationObjectId }, expiresAt: { $lte: now } }, { $set: { status: "expired" } }, { session });
       const invitation = await Invitation.findOneAndUpdate({
-        _id: invitationObjectId, householdId: householdObjectId, email, status: { $in: ["pending", "expired"] },
+        _id: invitationObjectId, householdId: householdObjectId, email, $and: [unexpiredHistory("expiresAt", now)], status: { $in: ["pending", "expired"] },
         $or: [{ sentAt: null }, { sentAt: { $lte: new Date(now.getTime() - 60_000) } }],
-      }, { $set: { tokenHash: hash, status: "pending", sentAt: now, expiresAt: new Date(now.getTime() + invitationLifetime), invitedById: user._id } }, { session });
+      }, { $set: { tokenHash: hash, status: "pending", sentAt: now, expiresAt, retentionExpiresAt, invitedById: user._id } }, { session });
       if (!invitation) throw new AccountError("No se pudo reenviar. Espera un minuto y revisa el estado de la invitación.");
       return { id: invitation._id, householdName: household.name };
     }
@@ -50,7 +53,7 @@ export async function inviteFamilyMember(actor: FamilyActor, householdId: string
       throw new AccountError("Ya hay una invitación pendiente para este correo. Puedes reenviarla o revocarla.");
     }
     const [invitation] = await Invitation.create([{
-      householdId: householdObjectId, invitedById: user._id, email, tokenHash: hash, status: "pending", sentAt: now, expiresAt: new Date(now.getTime() + invitationLifetime),
+      householdId: householdObjectId, invitedById: user._id, email, tokenHash: hash, status: "pending", sentAt: now, expiresAt, retentionExpiresAt,
     }], { session });
     return { id: invitation._id, householdName: household.name };
   });
@@ -71,7 +74,7 @@ export async function revokeFamilyInvitation(actor: FamilyActor, householdId: st
   await connectToDatabase();
   await mongoose.connection.transaction(async (session) => {
     const { household } = await lockHouseholdAccess(actor, householdId, session, true);
-    const result = await Invitation.updateOne({ _id: invitation, householdId: household._id, status: { $in: ["pending", "expired"] } }, { $set: { status: "revoked" } }, { session });
+    const result = await Invitation.updateOne({ _id: invitation, householdId: household._id, ...unexpiredHistory("expiresAt"), status: { $in: ["pending", "expired"] } }, { $set: { status: "revoked" } }, { session });
     if (!result.modifiedCount) throw new AccountError("La invitación ya no se puede revocar. Actualiza la página.");
   });
   return "Invitación revocada. Su enlace ya no permite unirse al hogar.";
@@ -94,7 +97,7 @@ export async function removeFamilyMember(actor: FamilyActor, householdId: string
 export async function getFamilyInvitation(token: unknown) {
   if (!validToken(token)) return null;
   await connectToDatabase();
-  const invitation = await Invitation.findOne({ tokenHash: tokenHash(token) }).lean();
+  const invitation = await Invitation.findOne({ tokenHash: tokenHash(token), ...unexpiredHistory("expiresAt") }).lean();
   if (!invitation) return null;
   const household = await Household.findById(invitation.householdId).select("name").lean();
   if (!household) return null;

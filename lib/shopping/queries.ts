@@ -1,3 +1,4 @@
+import { unexpiredHistory } from "@/lib/retention";
 import ShoppingItem from "@/models/ShoppingItem";
 import Product from "@/models/Product";
 import { requireObjectId } from "@/lib/households/access";
@@ -16,9 +17,9 @@ export async function getShoppingItem(actor: HouseholdActor, householdId: string
 export async function listShoppingItems(actor: HouseholdActor, householdId: string, status: ShoppingStatus, query = "") {
   const access = await requireInventoryReadAccess(actor, householdId);
   // Select the purchase before applying search so older purchases cannot surface through filters.
-  const latestReceipt = status === "received" ? await ShoppingItem.findOne({ householdId: access.householdId, status: "received" }).sort({ receivedAt: -1, _id: -1 }).select("receiptId receivedAt").lean() : null;
+  const latestReceipt = status === "received" ? await ShoppingItem.findOne({ householdId: access.householdId, status: "received", ...unexpiredHistory("receivedAt") }).sort({ receivedAt: -1, _id: -1 }).select("receiptId receivedAt").lean() : null;
   const receiptFilter = status !== "received" ? {} : latestReceipt?.receiptId ? { receiptId: latestReceipt.receiptId } : latestReceipt ? { receiptId: null, receivedAt: latestReceipt.receivedAt } : { _id: { $in: [] } };
-  const filter = { ...receiptFilter, householdId: access.householdId, status, ...(query.trim() ? { name: literalNamePattern(query.trim().slice(0, 160)) } : {}) };
+  const filter = { ...(status === "received" ? unexpiredHistory("receivedAt") : {}), ...receiptFilter, householdId: access.householdId, status, ...(query.trim() ? { name: literalNamePattern(query.trim().slice(0, 160)) } : {}) };
   // The displayed purchase and its receipt selection must share the same document versions.
   const includeReceipt = status === "purchased" && !query.trim();
   const items = await ShoppingItem.find(filter).sort(status === "received" ? { receivedAt: -1, _id: -1 } : { createdAt: 1, _id: 1 }).lean();

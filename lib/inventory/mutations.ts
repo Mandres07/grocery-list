@@ -10,6 +10,8 @@ import StockMovement from "@/models/StockMovement";
 import InventoryRequest from "@/models/InventoryRequest";
 import { requireCategoryInHousehold, requireProductInHousehold, validateCategoryParent } from "./references";
 import { inventoryName, inventoryRequestId, optionalId, optionalQuantity, wholeNumber } from "./validation";
+import { sixMonthsAfter, unexpiredHistory } from "@/lib/retention";
+import { isFreshInventoryRequest, requestIssuedAt } from "./request-id";
 import { MAX_CATEGORIES, MAX_PRODUCT_BATCH_SIZE } from "./limits";
 
 interface Result { id: string; movementId: string | null }
@@ -25,12 +27,17 @@ export async function mutateInventory(actor: HouseholdActor, householdId: string
     return await mongoose.connection.transaction(async (session) => {
       const access = await lockHouseholdAccess(actor, householdId, session);
       const previous = await InventoryRequest.findOne({ householdId: household, requestId }).session(session);
+      const now = new Date(Date.now());
+      const issuedAt = requestIssuedAt(requestId);
+      if (issuedAt !== null && !isFreshInventoryRequest(requestId, now.getTime())) throw new AccountError("La solicitud venció. Actualiza la página antes de continuar.");
       if (previous) {
         if (previous.fingerprint !== fingerprint) throw new AccountError("Esta solicitud ya se usó para otra operación. Actualiza la página.");
         return { id: previous.resultId.toString(), movementId: previous.movementId?.toString() ?? null };
       }
+      // Untimestamped legacy keys can replay an existing result, never execute anew.
+      if (!isFreshInventoryRequest(requestId, now.getTime())) throw new AccountError("La solicitud venció. Actualiza la página antes de continuar.");
       const result = await operationBody({ session, householdId: household, actorId: access.user._id });
-      await InventoryRequest.create([{ householdId: household, requestId, fingerprint, resultId: result.id, movementId: result.movementId }], { session });
+      await InventoryRequest.create([{ householdId: household, requestId, fingerprint, resultId: result.id, movementId: result.movementId, retentionExpiresAt: sixMonthsAfter(now) }], { session });
       return result;
     });
   } catch (error) {
@@ -44,6 +51,7 @@ async function movement(context: MutationContext, productId: Types.ObjectId, req
   if (before === after) return null;
   const [record] = await StockMovement.create([{
     householdId: context.householdId, productId, actorId: context.actorId, requestId,
+    retentionExpiresAt: sixMonthsAfter(new Date()),
     delta: after - before, quantityBefore: before, quantityAfter: after, reason, undoOfMovementId,
   }], { session: context.session });
   return record._id.toString();
@@ -183,7 +191,7 @@ export async function correctStock(actor: HouseholdActor, householdId: string, r
 export async function undoStockMovement(actor: HouseholdActor, householdId: string, requestId: string, movementId: string) {
   const id = requireObjectId(movementId);
   return mutateInventory(actor, householdId, requestId, "stock-undo", { id }, async (context) => {
-    const original = await StockMovement.findOne({ _id: id, householdId: context.householdId }).session(context.session);
+    const original = await StockMovement.findOne({ _id: id, householdId: context.householdId, ...unexpiredHistory("createdAt") }).session(context.session);
     if (!original || original.reason === "undo" || await StockMovement.exists({ householdId: context.householdId, undoOfMovementId: id }).session(context.session)) {
       throw new AccountError("Este movimiento no se puede deshacer o ya fue deshecho.");
     }

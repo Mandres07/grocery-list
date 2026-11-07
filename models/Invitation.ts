@@ -2,6 +2,7 @@ import { Schema, model, models, type Model, type Types } from "mongoose";
 import { emailPattern, objectId, schemaOptions, type Timestamps } from "./shared";
 
 export interface IInvitation extends Timestamps {
+  retentionExpiresAt?: Date;
   householdId: Types.ObjectId;
   invitedById: Types.ObjectId;
   email: string;
@@ -12,6 +13,7 @@ export interface IInvitation extends Timestamps {
 }
 
 const schema = new Schema<IInvitation>({
+  retentionExpiresAt: { type: Date },
   householdId: { type: objectId, ref: "Household", required: true },
   invitedById: { type: objectId, ref: "User", required: true },
   email: { type: String, required: true, trim: true, lowercase: true, maxlength: 254, match: emailPattern },
@@ -24,5 +26,7 @@ const schema = new Schema<IInvitation>({
 schema.index({ tokenHash: 1 }, { unique: true });
 schema.index({ householdId: 1, email: 1 }, { unique: true, partialFilterExpression: { status: "pending" } });
 schema.index({ status: 1, expiresAt: 1 });
+
+schema.index({ retentionExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default (models.Invitation as Model<IInvitation> | undefined) ?? model<IInvitation>("Invitation", schema);

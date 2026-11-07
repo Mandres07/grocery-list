@@ -114,3 +114,5 @@ Inventory retrieves 25 products per page in MongoDB, preserving stock priority, 
 Households can have 25 categories total, including subcategories and defaults. Creation is checked inside the existing serialized household transaction, including inline product creation. Existing categories remain readable/editable/deletable even if historical data exceeds the cap; none are deleted automatically. Default initialization respects remaining capacity.
 
 Activity continues to show the latest 50 matching stock movements with the limit explained below the list. Movements linked to received shopping items are labeled **Recepción de compra** individually. Custom shopping items have no stock movement because they do not change inventory.
+
+Historical activity expires after six calendar months, and expired movements cannot be undone. Stock quantities and archived products remain saved. See [data retention](data-retention.md) for TTL, request expiration, and deployment/backfill instructions.

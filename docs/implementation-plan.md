@@ -63,3 +63,5 @@ Protected hosted previews require renewed user authorization and branch-scoped c
 ## List behavior follow-up (2026-11-06)
 
 Authorized independently of milestone 9: inventory uses 25-item database pages with mobile/desktop navigation; households are capped at 25 categories including subcategories; activity retains the latest-50 notice and labels individual purchase receipts; every shopping tab displays all matching items, with Recibidos scoped to the latest confirmed purchase. Prior receipt records remain saved. See inventory/shopping guides for legacy receipt limitations and verification.
+
+Six-month retention follow-up authorized on 2026-11-06: TTL cleanup for movements, received shopping items, invitations, and duplicate-request records; 24-hour versioned command expiration prevents replay after deduplication cleanup. Pending/purchased items and saved inventory remain. Existing saved databases require the documented [retention rollout/backfill](data-retention.md); test runs do not perform that maintenance. This does not start milestone 9.

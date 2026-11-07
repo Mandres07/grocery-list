@@ -2,6 +2,7 @@ import { Schema, model, models, type Model, type Types } from "mongoose";
 import { objectId, schemaOptions, wholeQuantity, type Timestamps } from "./shared";
 
 export interface IStockMovement extends Timestamps {
+  retentionExpiresAt?: Date;
   householdId: Types.ObjectId;
   productId: Types.ObjectId;
   actorId: Types.ObjectId;
@@ -14,6 +15,7 @@ export interface IStockMovement extends Timestamps {
 }
 
 const schema = new Schema<IStockMovement>({
+  retentionExpiresAt: { type: Date },
   householdId: { type: objectId, ref: "Household", required: true },
   productId: { type: objectId, ref: "Product", required: true },
   actorId: { type: objectId, ref: "User", required: true },
@@ -28,5 +30,7 @@ const schema = new Schema<IStockMovement>({
 schema.index({ householdId: 1, requestId: 1 }, { unique: true });
 schema.index({ householdId: 1, createdAt: -1 });
 schema.index({ householdId: 1, undoOfMovementId: 1 }, { unique: true, partialFilterExpression: { undoOfMovementId: { $type: "objectId" } } });
+
+schema.index({ retentionExpiresAt: 1 }, { expireAfterSeconds: 0 });
 
 export default (models.StockMovement as Model<IStockMovement> | undefined) ?? model<IStockMovement>("StockMovement", schema);

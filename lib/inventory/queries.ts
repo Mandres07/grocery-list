@@ -1,3 +1,4 @@
+import { unexpiredHistory } from "@/lib/retention";
 import { AccountError } from "@/lib/auth/validation";
 import { requireHouseholdAccess, requireObjectId } from "@/lib/households/access";
 import type { HouseholdActor } from "@/lib/households/mutation-access";
@@ -87,6 +88,7 @@ export async function listInventoryActivity(actor: HouseholdActor, householdId: 
     person ? StockMovement.distinct("actorId", { householdId: access.householdId }).then((actorIds) => User.find({ _id: { $in: actorIds }, name: literalNamePattern(person) }).select("_id").lean()) : null,
   ]);
   const filter = {
+    ...unexpiredHistory("createdAt"),
     householdId: access.householdId,
     ...(matchingProducts ? { productId: { $in: matchingProducts.map((item) => item._id) } } : selectedProductId ? { productId: selectedProductId } : {}),
     ...(matchingActors ? { actorId: { $in: matchingActors.map((item) => item._id) } } : {}),

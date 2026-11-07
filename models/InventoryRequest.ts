@@ -2,6 +2,7 @@ import { Schema, model, models, type Model, type Types } from "mongoose";
 import { objectId, schemaOptions, type Timestamps } from "./shared";
 
 interface IInventoryRequest extends Timestamps {
+  retentionExpiresAt?: Date;
   householdId: Types.ObjectId;
   requestId: string;
   fingerprint: string;
@@ -10,6 +11,7 @@ interface IInventoryRequest extends Timestamps {
 }
 
 const schema = new Schema<IInventoryRequest>({
+  retentionExpiresAt: { type: Date },
   householdId: { type: objectId, required: true },
   requestId: { type: String, required: true, maxlength: 128 },
   fingerprint: { type: String, required: true },
@@ -18,5 +20,7 @@ const schema = new Schema<IInventoryRequest>({
 }, schemaOptions);
 schema.index({ householdId: 1, requestId: 1 }, { unique: true });
 
-// Retain deduplication records so an old retry cannot apply stock twice.
+// Expired commands are rejected independently of these six-month deduplication records.
+schema.index({ retentionExpiresAt: 1 }, { expireAfterSeconds: 0 });
+
 export default (models.InventoryRequest as Model<IInventoryRequest> | undefined) ?? model<IInventoryRequest>("InventoryRequest", schema);

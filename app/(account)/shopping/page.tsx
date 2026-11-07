@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import { inventoryPageContext } from "@/lib/inventory/page-context";
 import { listShoppingItems, shoppingProductOptions } from "@/lib/shopping/queries";
 import { SHOPPING_LABELS, type ShoppingStatus } from "@/lib/shopping/state";
@@ -30,7 +30,7 @@ export default async function ShoppingPage({ searchParams }: { searchParams: Pro
       <p className="mt-3 text-sm text-muted">Ajusta la cantidad y marca el artículo como comprado para guardarla en Comprados. Al llegar a casa, confirma la recepción para actualizar el inventario.</p>
       <div className="mt-3"><FormDialog title="Agregar productos por reponer" triggerLabel="Agregar faltantes" triggerClassName="action-secondary" submitLabel="Agregar faltantes" action={shoppingAction} hiddenFields={{ kind: "low-stock", householdId }}><p className="text-sm leading-6">Agregaremos los productos sin existencias y los que llegaron al aviso de reposición, con cantidad 1. Los que ya estén pendientes o comprados conservarán su cantidad.</p></FormDialog></div>
     </> : status === "purchased" ? <p className="mt-3 text-sm text-muted">Cuando llegue a casa, confirma toda la compra para sumar los productos vinculados al inventario. Para corregir una cantidad, desmarca el artículo y volverá a Pendientes.</p> : <p className="mt-3 text-sm text-muted">Esta es la última compra recibida. Sus productos vinculados se sumaron al inventario y no se volverán a sumar.</p>}
-    <ShoppingItems key={`${status}:${query}`} receiptItems={receiptItems} receiptRequestId={randomUUID()} householdId={householdId} items={items} total={total} status={status} filtered={Boolean(query)} />
+    <ShoppingItems key={`${status}:${query}`} receiptItems={receiptItems} receiptRequestId={createInventoryRequestId()} householdId={householdId} items={items} total={total} status={status} filtered={Boolean(query)} />
     <RefreshInventory />
   </div>;
 }

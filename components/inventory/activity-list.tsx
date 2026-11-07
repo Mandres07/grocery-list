@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import { ActionForm } from "@/components/ui/action-form";
 import { Icon } from "@/components/ui/icon";
 import { inventoryAction } from "@/app/(account)/inventory/actions";
@@ -16,7 +16,7 @@ export function ActivityList({ householdId, movements, expanded = false, filtere
         <p className="text-xs leading-5 text-muted">{item.purchaseReceipt ? "Recepción de compra" : reasons[item.reason]} · {item.actorName}{item.quantityBefore !== null && item.quantityBefore !== undefined && <> · {item.quantityBefore} → {item.quantityAfter}</>}</p>
         {item.createdAt && <time className="block text-xs leading-5 text-muted" dateTime={item.createdAt}>{new Date(item.createdAt).toLocaleString("es", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Panama" })}</time>}
       </div>
-      {item.canUndo && <div className="event-action"><ActionForm action={inventoryAction} requestId={randomUUID()} submitIcon="history" submitLabel="Deshacer" submitAriaLabel={`Deshacer movimiento de ${item.productName}`} submitClassName="action-quiet action-icon action-compact text-muted hover:text-brand" hiddenFields={{ kind: "undo-stock", householdId, movementId: item.id }} /></div>}
+      {item.canUndo && <div className="event-action"><ActionForm action={inventoryAction} requestId={createInventoryRequestId()} submitIcon="history" submitLabel="Deshacer" submitAriaLabel={`Deshacer movimiento de ${item.productName}`} submitClassName="action-quiet action-icon action-compact text-muted hover:text-brand" hiddenFields={{ kind: "undo-stock", householdId, movementId: item.id }} /></div>}
     </li>)}</ul>}
     <p className="mt-3 text-xs leading-5 text-muted">{filtered ? "Se muestran los últimos 50 movimientos que coinciden con los filtros." : "Se muestran los últimos 50 movimientos."} Deshacer aplica un movimiento contrario sobre las existencias actuales; conserva los cambios posteriores.</p>
   </>;

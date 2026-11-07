@@ -1,5 +1,6 @@
 "use client";
 
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import { Icon, type IconName } from "./icon";
 import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import type { AccountFormAction, AccountFormState } from "@/lib/auth/form-state";
@@ -32,7 +33,7 @@ export function ActionForm({ action, requestId: initialRequestId, hiddenFields =
       if (result.success) {
         pendingData.current = null;
         setUncertain(false);
-        requestId.current = crypto.randomUUID();
+        requestId.current = createInventoryRequestId();
         form.dataset.dirty = "false";
         if (resetOnSuccess) form.reset();
         onStatusChange?.("idle");
@@ -41,7 +42,7 @@ export function ActionForm({ action, requestId: initialRequestId, hiddenFields =
         if (successHref) window.location.assign(successHref);
         else window.location.reload();
       } else if (result.retryable) { setUncertain(true); onStatusChange?.("uncertain"); }
-      else { pendingData.current = null; setUncertain(false); requestId.current = crypto.randomUUID(); onStatusChange?.("idle"); }
+      else { pendingData.current = null; setUncertain(false); requestId.current = createInventoryRequestId(); onStatusChange?.("idle"); }
     } catch {
       setUncertain(true);
       onStatusChange?.("uncertain");

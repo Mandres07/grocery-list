@@ -1,3 +1,4 @@
+import { backfillRetention } from "../lib/retention-maintenance";
 import mongoose from "mongoose";
 import { createHash, randomUUID } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -84,12 +85,18 @@ async function checkIndexes(database = mongoose.connection.db!) {
 
 export async function runDatabaseCommand(command: string, args: string[], env = process.env) {
   const { uri, database } = maintenanceConfiguration(env);
-  if (!["inspect", "prepare", "backup", "restore-test"].includes(command)) throw new Error("Choose inspect, prepare, backup, or restore-test.");
+  if (!["inspect", "prepare", "retention", "backup", "restore-test"].includes(command)) throw new Error("Choose inspect, prepare, retention, backup, or restore-test.");
   try {
     await mongoose.connect(uri, { dbName: database, autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 10000, maxPoolSize: 2 });
     const db = mongoose.connection.db!;
     const hello = await db.command({ hello: 1 });
     if (!hello.setName && hello.msg !== "isdbgrid") throw new Error("This application requires a replica set or Atlas cluster for transactions.");
+    if (command === "retention") {
+      if (!args.includes("--writes-paused")) throw new Error("Deploy request-expiration protection and pause application writes before running retention --writes-paused.");
+      await checkIndexes();
+      console.log("Retention backfill:", await backfillRetention(db));
+      return;
+    }
     if (command === "prepare") await initializeDatabase();
     if (command === "inspect" || command === "prepare") {
       await db.command({ ping: 1 });

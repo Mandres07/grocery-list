@@ -14,7 +14,10 @@ import { acceptFamilyInvitation, getFamilyInvitation, inviteFamilyMember, remove
 import { createProduct, createProducts, editProduct, adjustStock, correctStock, setProductArchived, undoStockMovement, saveCategory, deleteCategory } from "@/lib/inventory/mutations";
 import { getInventoryProduct, listInventory, listInventoryActivity } from "@/lib/inventory/queries";
 import InventoryRequest from "@/models/InventoryRequest";
-import { randomUUID } from "node:crypto";
+import { backfillRetention } from "@/lib/retention-maintenance";
+import { sixMonthsAfter } from "@/lib/retention";
+import { REQUEST_LIFETIME_MS } from "@/lib/inventory/request-id";
+import { createInventoryRequestId as randomUUID } from "@/lib/inventory/request-id";
 import { addShoppingItem, addLowStockToShopping, setShoppingPurchased, editShoppingQuantity, deleteShoppingItem, receiveShoppingItem, receivePurchasedItems } from "@/lib/shopping/mutations";
 import { getShoppingItem, listShoppingItems, shoppingProductOptions } from "@/lib/shopping/queries";
 
@@ -507,7 +510,7 @@ describe("shared inventory workflows", () => {
   it("creates a shared-category batch with traceable receipts and deduplicates retries", async () => {
     const category = await Category.findOne({ householdId: home });
     const payload = { ...batch, categoryId: category!._id.toString() };
-    const requestId = "x".repeat(128);
+    const requestId = randomUUID();
     const result = await createProducts(member, home, requestId, payload);
     expect(await createProducts(member, home, requestId, payload)).toEqual(result);
     const products = await Product.find({ householdId: home, name: { $in: batch.names } }).sort({ name: 1 });
@@ -691,8 +694,8 @@ describe("shared inventory workflows", () => {
     await User.updateOne({ _id: owner.id }, { $set: { name: "Ana Compras" } });
     await User.updateOne({ _id: member.id }, { $set: { name: "Luis" } });
     const oats = await Product.create({ householdId: home, name: "Avena antigua" });
-    const old = await StockMovement.create({ householdId: home, productId: oats._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date("2001-01-01T12:00:00Z") });
-    await StockMovement.insertMany(Array.from({ length: 60 }, () => ({ householdId: home, productId, actorId: member.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date("2002-01-01T12:00:00Z") })));
+    const old = await StockMovement.create({ householdId: home, productId: oats._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date(Date.now() - 2 * 86400_000) });
+    await StockMovement.insertMany(Array.from({ length: 60 }, () => ({ householdId: home, productId, actorId: member.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date(Date.now() - 86400_000) })));
     const foreign = await Product.create({ householdId: otherHome, name: "Avena antigua" });
     await StockMovement.create({ householdId: otherHome, productId: foreign._id, actorId: outsider.id, delta: 1, reason: "receipt", requestId: randomUUID() });
     expect((await listInventoryActivity(owner, home, undefined, { query: "AVENA", person: "ana" })).map((item) => item.id)).toEqual([old._id.toString()]);
@@ -703,9 +706,11 @@ describe("shared inventory workflows", () => {
 
   it("includes both date boundaries in Panama time and excludes neighboring days", async () => {
     const dated = await Product.create({ householdId: home, name: "Fechas" });
-    const times = ["2026-11-04T04:59:59.999Z", "2026-11-04T05:00:00.000Z", "2026-11-05T04:59:59.999Z", "2026-11-05T05:00:00.000Z"];
+    const day = new Date(Date.now() - 86400_000).toISOString().slice(0, 10);
+    const start = new Date(`${day}T05:00:00.000Z`).getTime();
+    const times = [-1, 0, 86400_000 - 1, 86400_000].map(offset => new Date(start + offset));
     const rows = await StockMovement.insertMany(times.map((date) => ({ householdId: home, productId: dated._id, actorId: owner.id, delta: 1, reason: "receipt", requestId: randomUUID(), createdAt: new Date(date) })));
-    const results = await listInventoryActivity(owner, home, undefined, { query: "Fechas", from: "2026-11-04", to: "2026-11-04" });
+    const results = await listInventoryActivity(owner, home, undefined, { query: "Fechas", from: day, to: day });
     expect(results.map((item) => item.id)).toEqual([rows[2]._id.toString(), rows[1]._id.toString()]);
   });
 
@@ -728,9 +733,10 @@ describe("shared inventory workflows", () => {
 
   it("keeps undo eligibility accurate when the undo lies outside the filtered date range", async () => {
     const movement = await adjustStock(owner, home, randomUUID(), productId, 1);
-    await StockMovement.collection.updateOne({ _id: new Types.ObjectId(movement.movementId!) }, { $set: { createdAt: new Date("2001-01-01T12:00:00Z") } });
+    await StockMovement.collection.updateOne({ _id: new Types.ObjectId(movement.movementId!) }, { $set: { createdAt: new Date(Date.now() - 2 * 86400_000) } });
     await undoStockMovement(owner, home, randomUUID(), movement.movementId!);
-    const results = await listInventoryActivity(owner, home, undefined, { from: "2001-01-01", to: "2001-01-01" });
+    const day = new Date(Date.now() - 2 * 86400_000).toLocaleDateString("en-CA", { timeZone: "America/Panama" });
+    const results = await listInventoryActivity(owner, home, undefined, { from: day, to: day });
     expect(results).toHaveLength(1);
     expect(results[0]).toMatchObject({ id: movement.movementId, canUndo: false });
   });
@@ -1258,7 +1264,7 @@ describe("shared inventory workflows", () => {
     await receivePurchasedItems(member, home, randomUUID(), selected);
     expect(await purchasedReceiptItems(owner, home)).toEqual([]);
     expect((await listShoppingItems(owner, home, "received")).total).toBe(101);
-
+    expect((await listShoppingItems(owner, home, "received")).items).toHaveLength(101);
   });
   it("shows every pending item and only the latest received purchase, with individually labeled movements", async () => {
     const earlier = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 1, name: "", unit: "" });
@@ -1298,6 +1304,70 @@ describe("shared inventory workflows", () => {
     expect(activity).toHaveLength(50);
     expect(activity[0]).toMatchObject({ id: latest._id.toString(), purchaseReceipt: true });
     expect(activity.some((movement) => movement.id === movements[0]._id.toString())).toBe(false);
+  });
+
+  it("rejects expired command replay after deduplication cleanup and only replays known legacy results", async () => {
+    const current = randomUUID();
+    await adjustStock(owner, home, current, productId, 1);
+    await adjustStock(member, home, randomUUID(), productId, 1);
+    await expect(adjustStock(owner, home, current, productId, 1)).resolves.toBeDefined();
+    expect((await getInventoryProduct(owner, home, productId))!.quantity).toBe(4);
+    const expired = current.replace(/^v1_\d+_/, `v1_${Date.now() - REQUEST_LIFETIME_MS}_`);
+    await expect(adjustStock(owner, home, expired, productId, 1)).rejects.toThrow("venció");
+    await InventoryRequest.updateOne({ householdId: home, requestId: current }, { $set: { requestId: "legacy-retry" } });
+    await expect(adjustStock(owner, home, "legacy-retry", productId, 1)).resolves.toBeDefined();
+    await InventoryRequest.deleteOne({ householdId: home, requestId: "legacy-retry" });
+    await expect(adjustStock(owner, home, "legacy-retry", productId, 1)).rejects.toThrow("venció");
+    await expect(adjustStock(owner, home, expired, productId, 1)).rejects.toThrow("venció");
+    expect((await getInventoryProduct(owner, home, productId))!.quantity).toBe(4);
+    expect((await InventoryRequest.findOne({ householdId: home }))!.retentionExpiresAt).toBeInstanceOf(Date);
+    const replay = randomUUID();
+    await adjustStock(owner, home, replay, productId, 1);
+    await InventoryRequest.deleteOne({ householdId: home, requestId: replay });
+    const clock = vi.spyOn(Date, "now").mockReturnValue(Date.now() + 210 * 86400_000);
+    try {
+      await expect(adjustStock(owner, home, replay, productId, 1)).rejects.toThrow("venció");
+    } finally { clock.mockRestore(); }
+    expect((await getInventoryProduct(owner, home, productId))!.quantity).toBe(5);
+  });
+
+  it("filters and forbids undo of expired history while retaining active stock and shopping", async () => {
+    const old = await StockMovement.create({ householdId: home, productId, actorId: owner.id, delta: 2, reason: "receipt", requestId: "old-movement", createdAt: new Date("2020-01-01") });
+    const expiring = await StockMovement.create({ householdId: home, productId, actorId: owner.id, delta: 1, reason: "receipt", requestId: "expired-date", retentionExpiresAt: new Date(Date.now() - 1) });
+    const activity = await listInventoryActivity(owner, home);
+    expect(activity.some(item => [old.id, expiring.id].includes(item.id))).toBe(false);
+    await expect(undoStockMovement(owner, home, randomUUID(), old.id)).rejects.toThrow("no se puede deshacer");
+    const pending = await addShoppingItem(owner, home, randomUUID(), { productId, quantity: 2, name: "", unit: "" });
+    await ShoppingItem.updateOne({ _id: pending.id }, { $set: { createdAt: new Date("2020-01-01") } }, { timestamps: false });
+    expect((await listShoppingItems(owner, home, "pending")).items.map(item => item.id)).toContain(pending.id);
+    await setShoppingPurchased(owner, home, randomUUID(), pending.id, 0, true);
+    expect((await listShoppingItems(owner, home, "purchased")).items.map(item => item.id)).toContain(pending.id);
+    await receivePurchasedItems(owner, home, randomUUID(), await purchasedReceiptItems(owner, home));
+    const received = (await ShoppingItem.findById(pending.id))!;
+    expect(received.retentionExpiresAt).toEqual(sixMonthsAfter(received.receivedAt!));
+    await ShoppingItem.updateOne({ _id: pending.id }, { $set: { retentionExpiresAt: new Date(Date.now() - 1) } });
+    expect((await listShoppingItems(owner, home, "received")).items).toEqual([]);
+    expect((await getInventoryProduct(owner, home, productId))!.quantity).toBe(4);
+  });
+
+  it("backfills legacy expiration without touching active shopping, inventory, or extending existing deadlines", async () => {
+    const now = new Date();
+    const pending = await ShoppingItem.create({ householdId: home, addedById: owner.id, name: "Pendiente antiguo", quantity: 1, createdAt: new Date("2020-01-01") });
+    const purchased = await ShoppingItem.create({ householdId: home, addedById: owner.id, name: "Comprado antiguo", quantity: 1, status: "purchased", createdAt: new Date("2020-01-01") });
+    const received = await ShoppingItem.create({ householdId: home, addedById: owner.id, name: "Recibido", quantity: 1, status: "received", receivedAt: now });
+    const invitation = await Invitation.create({ householdId: home, invitedById: owner.id, email: "retention@example.test", tokenHash: "e".repeat(64), expiresAt: now });
+    const historical = await StockMovement.create({ householdId: home, productId, actorId: owner.id, delta: 1, reason: "receipt", requestId: "legacy-history", createdAt: now });
+    const request = await InventoryRequest.create({ householdId: home, requestId: "legacy-backfill", fingerprint: "legacy", resultId: productId, createdAt: now });
+    await backfillRetention(mongoose.connection.db!);
+    for (const [model, id] of [[ShoppingItem, received._id], [Invitation, invitation._id], [StockMovement, historical._id], [InventoryRequest, request._id]] as const) {
+      const record = await model.collection.findOne({ _id: id });
+      expect(record!.retentionExpiresAt).toEqual(sixMonthsAfter(now));
+    }
+    expect((await ShoppingItem.findById(pending.id))!.retentionExpiresAt).toBeUndefined();
+    expect((await ShoppingItem.findById(purchased.id))!.retentionExpiresAt).toBeUndefined();
+    expect((await Product.findById(productId))!.quantity).toBe(2);
+    const again = await backfillRetention(mongoose.connection.db!);
+    expect(Object.values(again).every(count => count === 0)).toBe(true);
   });
 
 });

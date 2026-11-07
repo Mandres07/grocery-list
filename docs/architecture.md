@@ -34,7 +34,7 @@ The ten Mongoose models are:
 
 A lazy cached connection opens only when needed. Production requires an explicit URI/database and disables automatic index creation. Maintenance commands call `initializeDatabase` from the actual model definitions; index creation is not repeated on every request.
 
-Transactional authorization locks user/household revisions to serialize creation, invitation acceptance, membership removal, and shared writes. Product revisions reject stale metadata edits and absolute counted corrections. Conditional atomic deltas enforce nonnegative safe integers. Stock and activity commit together. Undo appends one compensating movement against current stock, preserving later changes. `InventoryRequest` retains fingerprints/results, including no-op requests, and retries recheck current permission before returning the prior result.
+Transactional authorization locks user/household revisions to serialize creation, invitation acceptance, membership removal, and shared writes. Product revisions reject stale metadata edits and absolute counted corrections. Conditional atomic deltas enforce nonnegative safe integers. Stock and activity commit together. Undo appends one compensating movement against current stock, preserving later changes. `InventoryRequest` retains fingerprints/results for six months, including no-op requests. Versioned commands expire after 24 hours; retries recheck freshness and current permission. Legacy IDs can only return an existing matching result. See [data retention](data-retention.md).
 
 Default categories initialize transactionally once per household, preserving existing equivalents and later user edits/deletions. Inline category creation and product creation share the transaction.
 

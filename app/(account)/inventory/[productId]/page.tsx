@@ -1,6 +1,6 @@
+import { createInventoryRequestId } from "@/lib/inventory/request-id";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { randomUUID } from "node:crypto";
 import { inventoryPageContext } from "@/lib/inventory/page-context";
 import { getInventoryProduct, listInventoryCategories, listInventoryActivity } from "@/lib/inventory/queries";
 import { categoryLabels } from "@/lib/inventory/categories";
@@ -54,14 +54,14 @@ export default async function ProductPage({ params, searchParams }: {
         {product.archived ? <>
           <dl><div className="data-pair"><dt>Unidad</dt><dd>{product.unit}</dd></div><div className="data-pair"><dt>Categoría</dt><dd>{categoryLabels(categories).find((category) => category.id === product.categoryId)?.label ?? "Sin categoría"}</dd></div><div className="data-pair"><dt>Aviso de existencias</dt><dd>{product.lowStockThreshold ?? "Sin aviso"}</dd></div></dl>
           <p className="mt-3 text-sm text-muted">Restaura el producto para editarlo.</p><Link href={manageHref} className="action-secondary mt-3">Restaurar producto</Link>
-        </> : <ActionForm action={inventoryAction} requestId={randomUUID()} embedded submitLabel="Guardar producto" hiddenFields={{ ...hiddenFields, kind: "edit-product" }}><ProductFields categories={categories} product={product} /></ActionForm>}
+        </> : <ActionForm action={inventoryAction} requestId={createInventoryRequestId()} embedded submitLabel="Guardar producto" hiddenFields={{ ...hiddenFields, kind: "edit-product" }}><ProductFields categories={categories} product={product} /></ActionForm>}
       </SectionPanel></div>}
       {active === "stock" && <div className="measure-form"><SectionPanel title="Corregir existencias" description="Escribe el total que contaste en casa. Si alguien cambia las existencias mientras tanto, te pediremos actualizar antes de guardar." icon="basket">
-        {product.archived ? <><p className="notice">Restaura el producto antes de cambiar las existencias.</p><Link href={manageHref} className="action-secondary mt-3">Restaurar producto</Link></> : <ActionForm action={inventoryAction} requestId={randomUUID()} embedded submitLabel="Guardar cantidad contada" hiddenFields={{ ...hiddenFields, kind: "correct-stock" }}><FormField label="Cantidad total en casa" name="quantity" type="number" min={0} step={1} max={Number.MAX_SAFE_INTEGER} required defaultValue={product.quantity} /></ActionForm>}
+        {product.archived ? <><p className="notice">Restaura el producto antes de cambiar las existencias.</p><Link href={manageHref} className="action-secondary mt-3">Restaurar producto</Link></> : <ActionForm action={inventoryAction} requestId={createInventoryRequestId()} embedded submitLabel="Guardar cantidad contada" hiddenFields={{ ...hiddenFields, kind: "correct-stock" }}><FormField label="Cantidad total en casa" name="quantity" type="number" min={0} step={1} max={Number.MAX_SAFE_INTEGER} required defaultValue={product.quantity} /></ActionForm>}
       </SectionPanel></div>}
       {active === "activity" && <ActivityList householdId={householdId} movements={movements} expanded />}
       {active === "manage" && <div className="measure-form"><SectionPanel title={product.archived ? "Restaurar producto" : "Archivar producto"} description="Archivar conserva las existencias y la actividad. Un producto archivado no permite ajustes hasta restaurarlo." icon="folder">
-        <ActionForm action={inventoryAction} requestId={randomUUID()} submitLabel={product.archived ? "Restaurar producto" : "Archivar producto"} hiddenFields={{ ...hiddenFields, kind: product.archived ? "restore-product" : "archive-product" }} />
+        <ActionForm action={inventoryAction} requestId={createInventoryRequestId()} submitLabel={product.archived ? "Restaurar producto" : "Archivar producto"} hiddenFields={{ ...hiddenFields, kind: product.archived ? "restore-product" : "archive-product" }} />
       </SectionPanel></div>}
     </div>
     <RefreshInventory />

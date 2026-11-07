@@ -24,6 +24,8 @@ afterAll(async () => {
 describe("disposable database maintenance", () => {
   it("prepares actual indexes, verifies transactions, and restores exact documents into an isolated database", async () => {
     await runDatabaseCommand("prepare", [], env);
+    await expect(runDatabaseCommand("retention", [], env)).rejects.toThrow("Deploy request-expiration");
+    await runDatabaseCommand("retention", ["--writes-paused"], env);
     const client = await new MongoClient(LOCAL_DATABASE_URI).connect();
     const product = { _id: new ObjectId(), householdId: new ObjectId(), name: "Arroz de prueba", quantity: 4, createdAt: new Date(), nested: { value: null, label: "ñ" } };
     try { await client.db(database).collection("products").insertOne(product); }
@@ -40,7 +42,8 @@ describe("disposable database maintenance", () => {
     try {
       expect(await restoredClient.db(recovery).collection("products").findOne({ _id: product._id })).toEqual(product);
       expect(await restoredClient.db(database).collection("products").findOne({ _id: product._id })).toEqual(product);
-      expect(await restoredClient.db(recovery).collection("inventoryrequests").indexes()).toEqual(await restoredClient.db(database).collection("inventoryrequests").indexes());
+      const byName = (a: { name?: string }, b: { name?: string }) => (a.name ?? "").localeCompare(b.name ?? "");
+      expect((await restoredClient.db(recovery).collection("inventoryrequests").indexes()).sort(byName)).toEqual((await restoredClient.db(database).collection("inventoryrequests").indexes()).sort(byName));
     } finally { await restoredClient.close(); }
     await expect(runDatabaseCommand("restore-test", [archive], env)).rejects.toThrow("must be empty");
     const bytes = await readFile(archive);
