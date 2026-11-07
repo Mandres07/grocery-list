@@ -32,18 +32,22 @@ Vercel Hobby functions have dynamic outbound addresses. This deployment needs an
 
 Fixed outbound IPs are a Pro/Enterprise feature and are not enabled or purchased in this milestone. Do not install the Atlas Native Integration to create another cluster/account or replace restricted credentials: the already prepared Atlas project/cluster are used directly. See [MongoDB's Vercel networking guidance](https://www.mongodb.com/docs/atlas/reference/partner-integrations/vercel/) and [Vercel Static IPs](https://vercel.com/docs/networking/static-ips).
 
+## Existing-database updates
+
+For the 2026-11-06 list, retention, product-uniqueness, and logging changes, use the [retention rollout](data-retention.md) alongside deployment. Run the read-only duplicate-name report and resolve conflicts before creating the unique index; deploy request-expiration protection to every writer before deduplication cleanup; pause writes and follow backup/index/backfill instructions. Vercel deployment alone does not backfill old records, and production disables automatic index creation. The local verification of these follow-ups is recorded in the [implementation plan](implementation-plan.md); hosted activation is not recorded as complete.
+
 ## Deploy and verify
 
 1. Verify the security-updated source is available on GitHub and select the intended commit. Import the repository with Next.js settings and Production-only variables. Confirm the Atlas network entry is Active, then deploy.
 2. Confirm Node 22 and region iad1 in the build/function configuration; inspect build/runtime errors without copying secret values. Confirm the actual canonical domain matches `NEXTAUTH_URL`; redeploy after correcting environment settings.
 3. Open `/`, `/sign-in`, `/inventory`, `/shopping`, and `/account` while signed out. Protected routes must redirect rather than expose data. Auth/session endpoints must not cache user-specific responses publicly.
-4. Register a real owner account through the HTTPS app, verify immediate signed-in access with shared features restricted, then verify the real email link and create a household. Production currently starts empty; existing local accounts/products remain local until a deliberate migration is requested.
+4. Register a real owner account through the HTTPS app, verify immediate signed-in access with shared features restricted, then verify the real email link and create a household. This onboarding step applies to an empty new target. Preserve existing production accounts/data; local accounts/products remain local until a deliberate migration is requested.
 5. Invite a second real account at the user's direction, verify the actual recipient/link/acceptance, and check shared inventory/shopping persistence from both accounts/devices. Test a stock adjustment and a purchase/receipt once; verify it survives a reload. Confirm another household cannot access it. Do not send unrequested invitations to real recipients.
 6. Test password recovery and sign-out/sign-in over HTTPS. Check the branded email uses the correct app origin and verified sender. Monitor Resend delivery in its dashboard if mail is delayed; do not share API keys or tokenized links.
 7. Deferred by user choice for this milestone: configure the branch-scoped protected preview with its isolated credentials/secret/domain and verify it cannot read production. Keep production protection settings suitable for family use, and keep preview protected.
 8. Record concrete verification results, assigned production/preview domains, source commit, and remaining manual/device checks. Stop at milestone 8; home-screen/release polishing remains milestone 9.
 
-Use Vercel redeploy after environment changes; existing deployments retain the values they were built/deployed with. For a bad code release, roll back to a previously verified deployment that matches the database schema; do not delete Atlas data. Changing a session secret signs out sessions in that environment. Recovery uses the tested isolated procedure in `hosted-database.md`; paid backups remain disabled and manual exports are not scheduled automatically.
+Use Vercel redeploy after environment changes; existing deployments retain the values they were built/deployed with. For a bad code release, roll back to a previously verified deployment that matches the database schema; do not delete Atlas data. After deduplication cleanup is activated, do not roll back to code without request-expiration protection. Changing a session secret signs out sessions in that environment. Recovery uses the tested isolated procedure in `hosted-database.md`; paid backups remain disabled and manual exports are not scheduled automatically.
 
 ## Verification record
 

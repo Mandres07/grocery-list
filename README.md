@@ -22,16 +22,21 @@ Know what you have, see what you need, and record what arrives home.
 ## 🌿 Organize your household
 
 - **Individual accounts:** registration signs you in immediately; email verification unlocks shared features. Password recovery invalidates old sessions.
-- **A shared home:** owner-managed invitations and membership checks protect household data.
-- **Inventory first:** `/inventory` is the signed-in landing page, with products, categories/subcategories, search, and filters in shared dialogs.
+- **A shared home:** owner-managed invitations, household renaming, and membership checks protect household data.
+- **Inventory first:** `/inventory` is the signed-in landing page, with 25 products per page, responsive navigation, search, and filters in shared dialogs. Each household can have 25 categories, including subcategories.
 - **Buying priorities:** empty products appear first, followed by those at their warning threshold. Quantities and badges update immediately; rows wait 1.5 seconds after adjustments settle before reordering or leaving a filtered list.
-- **Traceable stock:** whole-unit adjustments, counted corrections, activity filters, safe undo, and archive/restore.
-- **Shared shopping:** `/shopping` has Pendientes, Comprados, and Recibidos. Edit quantities inline and check items as purchased; one receipt confirmation updates linked stock atomically. Purchase checks alone never change inventory.
+- **Traceable stock:** whole-unit adjustments, counted corrections, activity filters, safe undo, and archive/restore. Activity shows the latest 50 matching movements within the six-month retention period.
+- **Shared shopping:** `/shopping` has Pendientes, Comprados, and Recibidos. Edit quantities inline and check items as purchased; one receipt confirmation updates linked stock atomically. Purchase checks alone never change inventory. Tabs show all matching items; Recibidos shows the latest confirmed purchase.
+- **Duplicate-safe products:** names are unique per household regardless of capitalization, including archived products. Bulk entry skips existing/repeated names and reports added/omitted counts without changing existing stock.
+- **Bounded history:** six-month cleanup applies to movements, received purchases, invitations, and request records. Pending/purchased items and saved inventory remain. Requests expire after 24 hours to keep old retries safe after cleanup.
+- **Error diagnostics:** structured server logs identify operations and safe error details, with support references in unexpected action failures.
 - **Consistent Spanish UI:** locally bundled Manrope, green primary actions, restrained terracotta accents, compact rows, and shared web/email branding.
 
-Real inventory stays household-scoped; no sample products are added to accounts. Updates refresh on focus and periodically while visible, pausing for dirty/pending/uncertain forms. Offline writes are not queued.
+Real inventory stays household-scoped; the app does not automatically seed sample products into accounts. Updates refresh on focus and periodically while visible, pausing for dirty/pending/uncertain forms. Offline writes are not queued.
 
 Production runs on **Vercel Hobby** with **MongoDB Atlas Free/M0 in AWS us-east-1** and **Resend**. Registration, verification email/link, household creation, shared use, and password recovery were confirmed live. Production started with fresh accounts; existing local data was not migrated. Hosted preview deployment is deferred by user choice. Manual backup/recovery is tested; automatic backups are not configured.
+
+The 2026-11-06 follow-ups above were committed and tested locally; their hosted rollout is not recorded as complete. Existing databases need the [retention/index rollout](docs/data-retention.md), including duplicate-name review, before cleanup is activated. See [error logging](docs/error-logging.md) for Vercel diagnostics.
 
 ## 🚀 Get started
 
@@ -66,6 +71,8 @@ Edit the ignored `.env.local` using [Accounts and email](docs/accounts.md): gene
 npm run dev
 ```
 
+After changing Mongoose schemas or the instrumentation hook, fully stop and restart the app; hot reload can keep old models cached.
+
 Open **[localhost:3001](http://localhost:3001)**. Port 3001 keeps this app separate from Scorecast on port 3000. If testing another port, change `NEXTAUTH_URL` to match; email links and browser origin must agree.
 
 Register at `/`; `/register` is a compatibility redirect. Signed-in `/` and `/sign-in` visits lead to inventory. Accounts awaiting verification or household setup are redirected to `/household`; an invitation continues into its existing household. Personal account settings and sign-out remain available before verification.
@@ -86,7 +93,7 @@ See [Hosted database](docs/hosted-database.md) and [Deployment](docs/deployment.
 | Hosting | Vercel Hobby · Node 22 · iad1 · isolated Atlas production/preview database users |
 | Validation | ESLint · TypeScript · Vitest 4.1.12 · production build · disposable database tests |
 
-Frontend and backend share one repository. Current membership, transaction guards, product revisions, and retained request IDs protect persistent changes. Versions above reflect the deployment preparation on 2026-11-04; [package.json](package.json) and the lockfile are authoritative.
+Frontend and backend share one repository. Current membership, transaction guards, product revisions, and expiring, deduplicated requests protect persistent changes. Versions above reflect the deployment preparation on 2026-11-04; [package.json](package.json) and the lockfile are authoritative.
 
 ## 🧭 Roadmap
 
@@ -102,7 +109,7 @@ We stop after each milestone for testing and review. The [implementation plan](d
 | **08** | Vercel and production email | Complete; preview deployment deferred |
 | **09** | Release checks and Home Screen setup | Not started |
 
-Each member has their own account. Verified household members manage inventory and shopping; the owner additionally manages invitations and membership. Household renaming/deletion, member-initiated leaving, ownership transfer, and multiple-household navigation are not implemented. Barcode scanning, photos, expiry dates, fractional quantities, and offline writes are also deferred.
+Each member has their own account. Verified household members manage inventory and shopping; the owner additionally manages invitations, membership, and household renaming. Household deletion, member-initiated leaving, ownership transfer, and multiple-household navigation are not implemented. Barcode scanning, photos, expiry dates, fractional quantities, and offline writes are also deferred.
 
 ## ✅ Development and maintenance commands
 
@@ -115,13 +122,15 @@ Each member has their own account. Verified household members manage inventory a
 | `npm run db:up` / `npm run db:down` | Start/stop the Docker replica set, retaining its data |
 | `npm run db:check` | Local disposable integration tests, including export/recovery |
 | `npm run db:prepare` / `npm run db:inspect` | Explicit maintenance target: prepare indexes / inspect indexes and transactions |
+| `npm run db:tools -- product-duplicates` | Read-only report of case-insensitive duplicate names in the configured maintenance database |
+| `npm run db:tools -- retention --writes-paused` | Backfill expiration dates after the documented rollout; eligible history can then expire |
 | `npm run db:backup -- --writes-paused` | Export the configured database after pausing its writers |
 | `npm run db:restore-test -- <archive>` | Restore into a separate empty recovery database and verify checksums/indexes |
 | `npm run db:verify-access` | Check preview/production app-user isolation; removes its diagnostic collections |
 | `npm run tokens` | Regenerate CSS/icon/email branding from theme sources |
 | `npm run start` | Serve a completed production build on port 3001 |
 
-`db:check` always uses generated disposable databases on the local replica, not Atlas or real application data. Maintenance commands load `.env.atlas.local` explicitly. The latest completed application verification on 2026-11-04 passed **208 unit tests**, **87 integration tests**, lint, types, and build, with **zero npm audit findings**. These are recorded results, not a substitute for rerunning checks after code or dependency changes.
+`db:check` always uses generated disposable databases on the local replica, not Atlas or real application data. Maintenance commands load `.env.atlas.local` explicitly. Read the [retention rollout](docs/data-retention.md) before index preparation or backfill: TTL indexes can start background deletion of eligible history. The latest completed application verification on 2026-11-06 passed **273 unit tests**, **111 integration tests**, lint, types, and build. The last recorded dependency audit on 2026-11-04 reported zero findings; it was not rerun for these feature changes. These are recorded results, not a substitute for rerunning checks after code or dependency changes.
 
 ## 📚 Documentation
 
@@ -133,7 +142,9 @@ Each member has their own account. Verified household members manage inventory a
 | [Accounts and email](docs/accounts.md) | Local credentials, verification/recovery, hosted URLs |
 | [Family sharing](docs/family-sharing.md) | Invitations, membership, and two-account review |
 | [Inventory](docs/inventory.md) | Products, priority ordering, stock integrity, and activity |
-| [Shopping](docs/shopping.md) | Purchase checks, inline quantities, atomic receipt, history |
+| [Shopping](docs/shopping.md) | Purchase checks, inline quantities, atomic receipt, latest received purchase |
+| [Data retention](docs/data-retention.md) | Six-month TTL cleanup, safe request expiration, existing-data rollout |
+| [Error logging](docs/error-logging.md) | Structured diagnostics, support references, privacy, Vercel log searches |
 | [Hosted database](docs/hosted-database.md) | Atlas users, indexes, backup/recovery, hosted verification |
 | [Deployment](docs/deployment.md) | Vercel configuration, assigned domain, production verification |
 | [UI standards](docs/ui-standards.md) | Reusable components, tokens, typography, compact controls |

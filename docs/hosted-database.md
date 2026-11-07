@@ -22,9 +22,13 @@ MONGODB_DB_NAME=grocery_list_preview
 MONGODB_RESTORE_DB_NAME=grocery_list_restore_preview
 ```
 
-Run `npm run db:prepare` to create the app collections/indexes and verify an actual read transaction. This uses the real Mongoose models; it does not seed accounts/products or remove existing indexes/data. `npm run db:inspect` repeats the read-only topology, index, and transaction checks. Both require explicit settings and refuse administrative database names; neither falls back to localhost. Tools print no URI or credentials. Setup diagnostics intentionally omit raw driver errors because they can contain credentials.
+Run `npm run db:prepare` to create the app collections/indexes and verify an actual read transaction. This uses the real Mongoose models and does not seed accounts/products, drop indexes, or directly delete documents. Creating TTL indexes can, however, start background deletion of eligible historical records. `npm run db:inspect` repeats the read-only topology, index, and transaction checks. Both require explicit settings and refuse administrative database names; neither falls back to localhost. Tools print no URI or credentials. Setup diagnostics intentionally omit raw driver errors because they can contain credentials.
 
-The operations runner compiles only its entry point and application models with the existing TypeScript dependency into a temporary ignored `.local/database-tools-*` directory that is removed after the command exits. No extra runtime/build dependency or application endpoint is introduced.
+Before upgrading an existing database, run `npm run db:tools -- product-duplicates` and review conflicts before installing the unique product-name index. Follow the [retention rollout](data-retention.md) for request-expiration deployment, paused writes, backups, index preparation, and the explicit expiration backfill. These steps have not been performed against hosted data as part of the 2026-11-06 follow-up.
+
+The operations runner compiles its entry point, application models, and required maintenance helpers with the existing TypeScript dependency into a temporary ignored `.local/database-tools-*` directory that is removed after the command exits. No extra runtime/build dependency or application endpoint is introduced.
+
+The access-verification command below also prepares indexes; apply the existing-database rollout requirements before rerunning it.
 
 After preparation, add the raw saved app-user passwords as `ATLAS_PREVIEW_PASSWORD` and `ATLAS_PRODUCTION_PASSWORD` to the private maintenance file and run `npm run db:verify-access`. It prepares each app database with its own user, verifies an actual committed transaction in a uniquely named diagnostic collection, removes that collection, and checks denials for the other app database and recovery database. Passwords are URL-encoded internally; do not manually encode these two fields. App-user credentials stay separate from the maintenance connection.
 
@@ -44,6 +48,8 @@ Backups contain account hashes, personal data, invitations, and inventory histor
 
 Atlas backup availability must be verified in the actual project. As checked in official documentation on 2026-11-04, Free-cluster daily backups are an optional **paid private preview** and may not appear for this account. Do not assume free automatic backups or enable billing without authorization. If available, verify retention and perform a restore drill before relying on it. See [Free cluster backups](https://www.mongodb.com/docs/atlas/backup/cloud-backup/free-cluster-backup/). The logical export/recovery drill above remains independently available.
 
+Pausing application writers does not pause MongoDB TTL deletion. If historical records expire during export or recovery, complete-document snapshot verification can fail; the tools reject a mismatch. Investigate expiration and retry the isolated procedure rather than bypassing checksum checks or treating a failed drill as a verified backup.
+
 ## Review checkpoint
 
 The hosted checkpoint is complete: connectivity, transactions, required indexes, database-user isolation, tier/region, and preview export/recovery were verified, and backup availability was confirmed by the user. Production hosting and actual email/account/sharing checks subsequently passed; see [deployment](deployment.md). For a new deployment or recovery target, repeat the relevant checks rather than assuming a previous result applies. The retained recovery copy means that target is not currently empty; review/remove only that recovery database before repeating the drill.
@@ -51,3 +57,5 @@ The hosted checkpoint is complete: connectivity, transactions, required indexes,
 ## Hosted verification record
 
 On 2026-11-04, Atlas preview preparation succeeded with the restricted maintenance account. Required indexes and a read transaction were verified. A temporary diagnostic collection in the otherwise-empty preview database was exported and restored into `grocery_list_restore_preview`; complete document hashes, collection counts, archive integrity, and required indexes matched. The source diagnostic collection was removed afterward, leaving application collections/data unchanged. The isolated recovery copy and private local archive/manifest remain available for review. Maintenance access to production was denied. The user confirmed Free/M0 and AWS us-east-1. Both app users subsequently passed their own-database committed transaction/write checks and were denied access to the other app database and recovery database. Both app databases have required indexes and no retained diagnostic data. The user confirmed an optional paid backup offer in the cluster Backup tab, currently disabled. Manual logical backups/recovery are verified; no automatic backup schedule is configured. No billing option was enabled and no local household data was migrated.
+
+The 2026-11-04 verification above predates the 2026-11-06 unique product-name and retention TTL indexes. It does not establish that the newer indexes or retention backfill have been applied to hosted databases.

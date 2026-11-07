@@ -26,9 +26,9 @@ The ten Mongoose models are:
 - Household and Membership: ownership and current household access.
 - Invitation: email-bound, hashed single-use token, expiry, delivery/state.
 - Category: household and optional same-household parent, without cycles.
-- Product: household, category, unit, nonnegative integer quantity, warning threshold, revision, archive state.
+- Product: household, case-insensitive unique name (including archived products), category, unit, nonnegative integer quantity, warning threshold, revision, archive state.
 - StockMovement: author, before/after quantities, delta, reason, request ID, optional undo reference.
-- ShoppingItem: optional product link, snapshot name/unit, quantity, purchased/received state, revision, receipt quantity/time/movement.
+- ShoppingItem: optional product link, snapshot name/unit, quantity, purchased/received state, revision, receipt batch ID/time/movement, and received-item expiration.
 - AuthRateLimit: shared request budgets with TTL cleanup.
 - InventoryRequest: durable mutation fingerprint and result for retry deduplication.
 
@@ -36,15 +36,17 @@ A lazy cached connection opens only when needed. Production requires an explicit
 
 Transactional authorization locks user/household revisions to serialize creation, invitation acceptance, membership removal, and shared writes. Product revisions reject stale metadata edits and absolute counted corrections. Conditional atomic deltas enforce nonnegative safe integers. Stock and activity commit together. Undo appends one compensating movement against current stock, preserving later changes. `InventoryRequest` retains fingerprints/results for six months, including no-op requests. Versioned commands expire after 24 hours; retries recheck freshness and current permission. Legacy IDs can only return an existing matching result. See [data retention](data-retention.md).
 
-Default categories initialize transactionally once per household, preserving existing equivalents and later user edits/deletions. Inline category creation and product creation share the transaction.
+Default categories initialize transactionally once per household, preserving existing equivalents and later user edits/deletions, within the 25-category household cap. Inline category creation and product creation share the transaction.
 
 ## Inventory and shopping boundaries
 
-Inventory server queries prioritize zero stock, then warning-threshold stock, then available stock before the 25-product page offset and limit. Archived browsing stays alphabetical. The client reconciles quantities by revision and updates labels immediately, while keeping row membership/order fixed during adjustments and for 1.5 seconds after all requests settle. Another press resets the timer; changing filters creates a fresh list. Product details and global inventory sections use URL-backed tabs. Activity filters are applied before the 50-movement limit.
+Inventory server queries prioritize zero stock, then warning-threshold stock, then available stock before the 25-product page offset and limit. Archived browsing stays alphabetical. The client reconciles quantities by revision and updates labels immediately, while keeping row membership/order fixed during adjustments and for 1.5 seconds after all requests settle. Another press resets the timer; changing filters creates a fresh list. Product details and global inventory sections use URL-backed tabs. Activity filters and six-month retention apply before the 50-movement limit. Purchase receipts are labeled individually. Bulk product creation skips existing/archived names and repeated rows, storing added/omitted counts for consistent retry feedback.
 
-Shopping has Pending, Purchased, and Received views. Inline quantities save atomically with the purchase check, without changing stock. Explicit batch receipt pins reviewed IDs/revisions/quantities and updates linked stock, activity, and receipt history in one transaction; one conflict rolls everything back. Custom entries become received without creating inventory products. Deterministic per-item movement IDs and retained request results prevent duplicate receipts. A received shopping record remains historical if its stock movement is later undone. See [inventory](inventory.md) and [shopping](shopping.md).
+Shopping has Pending, Purchased, and Received views without item pagination. Pending and Purchased retain all matching items; Received selects only the latest unexpired confirmed purchase before applying search. Inline quantities save atomically with the purchase check, without changing stock. Explicit batch receipt pins reviewed IDs/revisions/quantities and updates linked stock, activity, and receipt history in one transaction; one conflict rolls everything back. Custom entries become received without creating inventory products. Deterministic per-item movement IDs and retained request results prevent duplicate receipts. A received shopping record remains historical if its stock movement is later undone. See [inventory](inventory.md) and [shopping](shopping.md).
 
 Clients preserve request IDs/data for uncertain outcomes, disable conflicting controls, and expose retry/error states. Focus/online/30-second refresh runs only while visible/online and pauses for dirty, pending, or uncertain forms. The app does not implement offline writes or instant push synchronization.
+
+Server errors use a shared allowlisted JSON logger with operation names, safe technical fields, and opaque references in unexpected action feedback. The Next.js instrumentation hook captures unhandled server failures. See [error logging](error-logging.md) for coverage and data exclusions; browser-only exceptions need separate reporting.
 
 ## Environments and operations
 

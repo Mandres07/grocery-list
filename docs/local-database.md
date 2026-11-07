@@ -74,7 +74,17 @@ The original local accounts/inventory remain local. Production started fresh by 
 
 The integration suite checks model indexes, account/token/rate-limit workflows, family permissions/concurrency, household-scoped references, inventory stock/undo/deduplication/rollback, shopping batch receipts, and a complete maintenance export/recovery drill. The latter requires **host-installed `mongodump` and `mongorestore`**, even when the database runs in Docker. The app itself does not need these tools at runtime.
 
-The latest recorded application verification on 2026-11-04 passed 203 unit tests and 86 integration tests plus lint, TypeScript, and production build. Counts change as tests are added; command output is authoritative. This guide does not claim an unrun check passed.
+See the [implementation plan](implementation-plan.md) for the latest recorded check results. Counts change as tests are added; command output is authoritative. Documentation-only edits do not imply that application checks were rerun.
+
+## Schema changes, retention, and logs
+
+Fully restart Next.js after changing Mongoose schemas or adding the instrumentation hook. Hot reload can retain old models: new fields such as `retentionExpiresAt` can then raise `StrictModeError` during stock/receipt saves. Restart the app process, not MongoDB; the saved database and shopping items remain in place.
+
+Historical records use six-month expiration dates; pending/purchased items and inventory are retained. Existing historical data needs the [retention backfill](data-retention.md). Development can create schema indexes automatically, so new TTL indexes can delete records whose expiration dates have already passed. Never use disposable-test setup to replace or backfill the saved app database.
+
+The npm `db:prepare` / `db:tools` commands load `.env.atlas.local`, not `.env.local`. Do not assume they target the saved local database. Deliberate local maintenance requires explicit local `MONGODB_URI` and `MONGODB_DB_NAME` values when running `scripts/run-database-tools.mjs`, following the same rollout sequence.
+
+App errors appear in the terminal; Next.js development logs currently live under `.next/dev/logs/`, and native MongoDB startup logs are separate in `.local/mongo.log`. Search structured application errors by operation or the user-visible reference; see [error logging](error-logging.md). Local logs are not production Vercel logs.
 
 ## Troubleshooting
 
