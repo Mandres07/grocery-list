@@ -26,7 +26,7 @@ Legacy IDs without timestamps can only return an existing matching fingerprint/r
 Application changes alone do not backfill saved data. Production disables automatic index creation.
 
 1. Deploy this application's request-expiration protection to every writer. Pause app writes for maintenance; do not run an older writer alongside cleanup.
-2. Using the existing explicit private maintenance target, run `npm run db:prepare` to install/verify schema indexes.
+2. Using the existing explicit private maintenance target, run `npm run db:tools -- product-duplicates` and resolve any reported name conflicts before index installation. Then run `npm run db:prepare` to install/verify schema indexes.
 3. Run `npm run db:tools -- retention --writes-paused` to assign expiration dates to existing historical records. This can cause old data to be permanently removed by MongoDB as soon as it becomes eligible. The command checks required indexes before changing records.
 4. Run `npm run db:inspect`, then resume writes and reload old tabs.
 

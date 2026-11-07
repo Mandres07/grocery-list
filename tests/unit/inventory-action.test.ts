@@ -25,6 +25,7 @@ function request(delta = "1") {
 beforeEach(() => {
   vi.resetAllMocks();
   vi.mocked(requireVerifiedUser).mockResolvedValue(actor);
+  vi.mocked(createProducts).mockResolvedValue({ id: "c".repeat(24), movementId: null, addedCount: 2, omittedCount: 0 });
   vi.mocked(getInventoryProduct).mockResolvedValue({ id: "c".repeat(24), name: "Arroz", quantity: 11, revision: 2, unit: "bolsas", categoryId: null, lowStockThreshold: null, archived: false });
 });
 
@@ -76,6 +77,17 @@ describe("bulk product submission", () => {
       categoryId: "d".repeat(24), names: ["Arroz", "Leche"], quantities: ["2", "0"], thresholds: ["1", ""],
     });
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it.each([{ addedCount: 2, omittedCount: 3 }, { addedCount: 0, omittedCount: 5 }])("returns durable success counts and a completion URL for $addedCount added / $omittedCount omitted", async (counts) => {
+    vi.mocked(createProducts).mockResolvedValue({ id: "c".repeat(24), movementId: null, ...counts });
+    const data = request(); data.set("kind", "create-products");
+    const result = await inventoryAction({ success: false, message: "" }, data);
+    expect(result.success).toBe(true);
+    expect(result.message).toContain(`Se agregaron ${counts.addedCount} productos`);
+    expect(result.message).toContain(`Se omitieron ${counts.omittedCount} productos duplicados`);
+    expect(result.successHref).toBe(`/inventory?added=${counts.addedCount}&omitted=${counts.omittedCount}`);
+    expect(revalidatePath).toHaveBeenCalled();
   });
 
   it("returns row validation errors without revalidating inventory", async () => {

@@ -103,6 +103,16 @@ describe("inventory sections", () => {
     expect(listInventory).toHaveBeenCalledWith(expect.anything(), expect.anything(), { query: "Arroz", lowStock: true, archived: false, page: 1 });
   });
 
+  it("shows the bulk completion notice after navigation and ignores malformed counts", async () => {
+    const html = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({ added: "2", omitted: "3" }) }));
+    expect(html).toContain("Se agregaron 2 productos. Se omitieron 3 productos duplicados.");
+    expect(html).toContain("Sus existencias no cambiaron.");
+    expect(html).toContain("Cerrar aviso");
+    const invalid = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({ added: "-1", omitted: "bad" }) }));
+    expect(invalid).not.toContain("Cerrar aviso");
+    const allSkipped = renderToStaticMarkup(await InventoryPage({ searchParams: Promise.resolve({ added: "0", omitted: "3" }) }));
+    expect(allSkipped).toContain("Se agregaron 0 productos. Se omitieron 3 productos duplicados.");
+  });
 
   it("renders category management independently of the product form", async () => {
     const html = renderToStaticMarkup(await CategoriesPage({ searchParams: Promise.resolve({}) }));

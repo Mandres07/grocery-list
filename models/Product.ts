@@ -12,6 +12,8 @@ export interface IProduct extends Timestamps {
   revision: number;
 }
 
+export const PRODUCT_NAME_COLLATION = { locale: "es", strength: 2 } as const;
+
 const schema = new Schema<IProduct>({
   householdId: { type: objectId, ref: "Household", required: true },
   name: { type: String, required: true, trim: true, maxlength: 160 },
@@ -31,6 +33,7 @@ const schema = new Schema<IProduct>({
   revision: { ...wholeQuantity, default: 0 },
 }, schemaOptions);
 
+schema.index({ householdId: 1, name: 1 }, { unique: true, collation: PRODUCT_NAME_COLLATION });
 schema.index({ householdId: 1, archivedAt: 1, categoryId: 1, name: 1 });
 
 export default (models.Product as Model<IProduct> | undefined) ?? model<IProduct>("Product", schema);

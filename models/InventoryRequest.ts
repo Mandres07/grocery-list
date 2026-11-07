@@ -1,8 +1,10 @@
 import { Schema, model, models, type Model, type Types } from "mongoose";
-import { objectId, schemaOptions, type Timestamps } from "./shared";
+import { objectId, schemaOptions, wholeQuantity, type Timestamps } from "./shared";
 
 interface IInventoryRequest extends Timestamps {
   retentionExpiresAt?: Date;
+  addedCount?: number;
+  omittedCount?: number;
   householdId: Types.ObjectId;
   requestId: string;
   fingerprint: string;
@@ -12,6 +14,8 @@ interface IInventoryRequest extends Timestamps {
 
 const schema = new Schema<IInventoryRequest>({
   retentionExpiresAt: { type: Date },
+  addedCount: { ...wholeQuantity, required: false },
+  omittedCount: { ...wholeQuantity, required: false },
   householdId: { type: objectId, required: true },
   requestId: { type: String, required: true, maxlength: 128 },
   fingerprint: { type: String, required: true },

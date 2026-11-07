@@ -1,5 +1,6 @@
 "use server";
 
+import { bulkProductMessage } from "@/lib/inventory/bulk-result";
 import { revalidatePath } from "next/cache";
 import { requireVerifiedUser } from "@/lib/auth/session";
 import { AccountError } from "@/lib/auth/validation";
@@ -26,8 +27,13 @@ export async function inventoryAction(_state: AccountFormState, data: FormData):
     const requestId = field(data, "requestId");
     const kind = field(data, "kind");
     let stock: StockSnapshot | undefined;
+    let completion: { message: string; successHref: string } | undefined;
     switch (kind) {
-      case "create-products": await createProducts(user, householdId, requestId, { categoryId: data.get("categoryId"), names: data.getAll("names"), quantities: data.getAll("quantities"), thresholds: data.getAll("thresholds") }); break;
+      case "create-products": {
+        const result = await createProducts(user, householdId, requestId, { categoryId: data.get("categoryId"), names: data.getAll("names"), quantities: data.getAll("quantities"), thresholds: data.getAll("thresholds") });
+        if (result.addedCount !== undefined && result.omittedCount !== undefined) completion = { message: bulkProductMessage(result.addedCount, result.omittedCount), successHref: `/inventory?added=${result.addedCount}&omitted=${result.omittedCount}` };
+        break;
+      }
       case "create-product": await createProduct(user, householdId, requestId, { ...productInput(data), quantity: data.get("quantity") }); break;
       case "edit-product": await editProduct(user, householdId, requestId, field(data, "productId"), data.get("revision"), productInput(data)); break;
       case "archive-product": await setProductArchived(user, householdId, requestId, field(data, "productId"), true); break;
@@ -49,7 +55,7 @@ export async function inventoryAction(_state: AccountFormState, data: FormData):
       default: throw new AccountError("Esta operación no es válida.");
     }
     revalidatePath("/", "layout");
-    return { success: true, ...(stock ? { stock } : {}), message: kind === "undo-stock" ? "Movimiento deshecho. Se conservaron los cambios posteriores." : "Cambio guardado y compartido con tu hogar." };
+    return { success: true, ...(stock ? { stock } : {}), message: kind === "undo-stock" ? "Movimiento deshecho. Se conservaron los cambios posteriores." : "Cambio guardado y compartido con tu hogar.", ...completion };
   } catch (error) {
     if (error instanceof AccountError || error instanceof HouseholdAccessError) return { success: false, message: error.message };
     console.error("Inventory operation unavailable");

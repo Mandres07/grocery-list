@@ -964,17 +964,18 @@ describe("shared inventory workflows", () => {
   });
 
   it("uses Spanish alphabetical order consistently across priority groups, filters, and archives", async () => {
-    const names = ["zanahoria", "Ñame", "Épinaca", "arroz", "Naranja"];
-    for (const quantity of [0, 1, 5]) await Product.insertMany(names.map(name => ({ householdId: home, name, quantity, lowStockThreshold: 1 })));
-    const alphabetical = ["arroz", "Épinaca", "Naranja", "Ñame", "zanahoria"];
+    const names = ["zanahoria", "Ñame", "Épinaca", "Arroz especial", "Naranja"];
+    const alphabetical = ["Arroz especial", "Épinaca", "Naranja", "Ñame", "zanahoria"];
+    const groupNames = (quantity: number) => alphabetical.map(name => `${name} ${quantity}`);
+    for (const quantity of [0, 1, 5]) await Product.insertMany(names.map(name => ({ householdId: home, name: `${name} ${quantity}`, quantity, lowStockThreshold: 1 })));
     const result = await listInventory(owner, home);
-    expect(result.products.filter(item => item.quantity === 0).map(item => item.name)).toEqual(alphabetical);
-    expect(result.products.filter(item => item.quantity === 1).map(item => item.name)).toEqual(alphabetical);
-    expect(result.products.filter(item => item.quantity === 5).map(item => item.name)).toEqual(alphabetical);
+    expect(result.products.filter(item => item.quantity === 0).map(item => item.name)).toEqual(groupNames(0));
+    expect(result.products.filter(item => item.quantity === 1).map(item => item.name)).toEqual(groupNames(1));
+    expect(result.products.filter(item => item.quantity === 5).map(item => item.name)).toEqual(groupNames(5));
     expect(result.products.slice(0, 10).map(item => item.quantity)).toEqual([0, 0, 0, 0, 0, 1, 1, 1, 1, 1]);
-    expect((await listInventory(member, home, { lowStock: true })).products.map(item => item.name)).toEqual([...alphabetical, ...alphabetical]);
-    await Product.insertMany(names.map(name => ({ householdId: home, name, quantity: 5, archivedAt: new Date() })));
-    expect((await listInventory(owner, home, { archived: true })).products.map(item => item.name)).toEqual(alphabetical);
+    expect((await listInventory(member, home, { lowStock: true })).products.map(item => item.name)).toEqual([...groupNames(0), ...groupNames(1)]);
+    await Product.insertMany(names.map(name => ({ householdId: home, name: `${name} archivado`, quantity: 5, archivedAt: new Date() })));
+    expect((await listInventory(owner, home, { archived: true })).products.map(item => item.name)).toEqual(alphabetical.map(name => `${name} archivado`));
   });
 
   it("excludes archived products from buying priority and preserves alphabetical archive browsing", async () => {
@@ -1368,6 +1369,59 @@ describe("shared inventory workflows", () => {
     expect((await Product.findById(productId))!.quantity).toBe(2);
     const again = await backfillRetention(mongoose.connection.db!);
     expect(Object.values(again).every(count => count === 0)).toBe(true);
+  });
+
+  it("rejects single-product duplicates and skips them in batches while preserving archived products", async () => {
+    for (const name of ["arroz", "ARROZ", "  Arroz  "]) {
+      await expect(createProduct(owner, home, randomUUID(), { ...input, name })).rejects.toThrow("ya existe");
+    }
+    await expect(createProduct(outsider, otherHome, randomUUID(), input)).resolves.toBeDefined();
+    const other = await createProduct(member, home, randomUUID(), { ...input, name: "Pasta" });
+    await expect(editProduct(owner, home, randomUUID(), other.id, 0, { ...input, name: "ARROZ" })).rejects.toThrow("ya existe");
+    await expect(editProduct(owner, home, randomUUID(), productId, 0, { ...input, name: "ARROZ" })).resolves.toBeDefined();
+    expect(await createProducts(member, home, randomUUID(), { categoryId: null, names: ["Sal nueva", "sal nueva"], quantities: ["1", "9"], thresholds: ["", ""] })).toMatchObject({ addedCount: 1, omittedCount: 1 });
+    expect((await Product.findOne({ householdId: home, name: "Sal nueva" }))!.quantity).toBe(1);
+    expect(await createProducts(member, home, randomUUID(), { categoryId: null, names: ["Pimienta nueva", "arroz"], quantities: ["1", "1"], thresholds: ["", ""] })).toMatchObject({ addedCount: 1, omittedCount: 1 });
+    expect(await Product.exists({ householdId: home, name: "Pimienta nueva" })).not.toBeNull();
+    await setProductArchived(owner, home, randomUUID(), productId, true);
+    await expect(createProduct(member, home, randomUUID(), input)).rejects.toThrow("archivado");
+    await expect(setProductArchived(member, home, randomUUID(), productId, false)).resolves.toBeDefined();
+    expect((await getInventoryProduct(member, home, productId))!.quantity).toBe(2);
+  });
+
+  it("enforces product uniqueness in the database and serializes concurrent members", async () => {
+    await expect(Product.create({ householdId: home, name: "arroz" })).rejects.toMatchObject({ code: 11000 });
+    const results = await Promise.allSettled([
+      createProduct(owner, home, randomUUID(), { ...input, name: "Frijoles" }),
+      createProduct(member, home, randomUUID(), { ...input, name: "FRIJOLES" }),
+    ]);
+    expect(results.filter(result => result.status === "fulfilled")).toHaveLength(1);
+    expect(await Product.countDocuments({ householdId: home, name: "frijoles" }).collation({ locale: "es", strength: 2 })).toBe(1);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(2);
+  });
+
+  it("skips archived and repeated names, keeps original counts on retry, and accepts all-duplicate batches", async () => {
+    await setProductArchived(owner, home, randomUUID(), productId, true);
+    const payload = { categoryId: null, names: ["arroz", "Lentejas", "LENTEJAS", "Avena"], quantities: ["99", "3", "8", "0"], thresholds: ["", "1", "", ""] };
+    const requestId = randomUUID();
+    const result = await createProducts(member, home, requestId, payload);
+    expect(result).toMatchObject({ addedCount: 2, omittedCount: 2 });
+    expect(await createProducts(member, home, requestId, payload)).toEqual(result);
+    expect((await Product.findById(productId))!.quantity).toBe(2);
+    expect((await Product.findOne({ householdId: home, name: "Lentejas" }))!.quantity).toBe(3);
+    const movementsBefore = await StockMovement.countDocuments({ householdId: home });
+    const allDuplicatesId = randomUUID();
+    const allDuplicates = await createProducts(owner, home, allDuplicatesId, payload);
+    expect(allDuplicates).toMatchObject({ id: home, movementId: null, addedCount: 0, omittedCount: 4 });
+    expect(await createProducts(owner, home, allDuplicatesId, payload)).toEqual(allDuplicates);
+    expect(await StockMovement.countDocuments({ householdId: home })).toBe(movementsBefore);
+    expect(await Product.countDocuments({ householdId: home })).toBe(3);
+    const concurrent = await Promise.all([
+      createProducts(owner, home, randomUUID(), { ...batch, names: ["Sal compartida", "Maíz compartido", "Aceite compartido"] }),
+      createProducts(member, home, randomUUID(), { ...batch, names: ["SAL COMPARTIDA", "MAÍZ COMPARTIDO", "ACEITE COMPARTIDO"] }),
+    ]);
+    expect(concurrent.map(result => result.addedCount).sort()).toEqual([0, 3]);
+    expect(concurrent.map(result => result.omittedCount).sort()).toEqual([0, 3]);
   });
 
 });

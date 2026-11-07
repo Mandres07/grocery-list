@@ -4,7 +4,7 @@ import { connectToDatabase } from "@/lib/db";
 import { AccountError } from "@/lib/auth/validation";
 import { requireObjectId } from "@/lib/households/access";
 import { lockHouseholdAccess, type HouseholdActor } from "@/lib/households/mutation-access";
-import Product from "@/models/Product";
+import Product, { PRODUCT_NAME_COLLATION } from "@/models/Product";
 import Category from "@/models/Category";
 import StockMovement from "@/models/StockMovement";
 import InventoryRequest from "@/models/InventoryRequest";
@@ -14,7 +14,7 @@ import { sixMonthsAfter, unexpiredHistory } from "@/lib/retention";
 import { isFreshInventoryRequest, requestIssuedAt } from "./request-id";
 import { MAX_CATEGORIES, MAX_PRODUCT_BATCH_SIZE } from "./limits";
 
-interface Result { id: string; movementId: string | null }
+interface Result { id: string; movementId: string | null; addedCount?: number; omittedCount?: number }
 export interface MutationContext { session: ClientSession; householdId: Types.ObjectId; actorId: Types.ObjectId }
 
 export async function mutateInventory(actor: HouseholdActor, householdId: string, requestId: string, operation: string, payload: unknown,
@@ -32,16 +32,22 @@ export async function mutateInventory(actor: HouseholdActor, householdId: string
       if (issuedAt !== null && !isFreshInventoryRequest(requestId, now.getTime())) throw new AccountError("La solicitud venció. Actualiza la página antes de continuar.");
       if (previous) {
         if (previous.fingerprint !== fingerprint) throw new AccountError("Esta solicitud ya se usó para otra operación. Actualiza la página.");
-        return { id: previous.resultId.toString(), movementId: previous.movementId?.toString() ?? null };
+        return { id: previous.resultId.toString(), movementId: previous.movementId?.toString() ?? null, ...(previous.addedCount !== undefined && previous.omittedCount !== undefined ? { addedCount: previous.addedCount, omittedCount: previous.omittedCount } : {}) };
       }
       // Untimestamped legacy keys can replay an existing result, never execute anew.
       if (!isFreshInventoryRequest(requestId, now.getTime())) throw new AccountError("La solicitud venció. Actualiza la página antes de continuar.");
       const result = await operationBody({ session, householdId: household, actorId: access.user._id });
-      await InventoryRequest.create([{ householdId: household, requestId, fingerprint, resultId: result.id, movementId: result.movementId, retentionExpiresAt: sixMonthsAfter(now) }], { session });
+      await InventoryRequest.create([{ householdId: household, requestId, fingerprint, resultId: result.id, movementId: result.movementId, retentionExpiresAt: sixMonthsAfter(now), ...(result.addedCount !== undefined && result.omittedCount !== undefined ? { addedCount: result.addedCount, omittedCount: result.omittedCount } : {}) }], { session });
       return result;
     });
   } catch (error) {
-    if (error instanceof Error && "code" in error && error.code === 11000) throw new AccountError("Ya existe un registro con esos datos. Actualiza la página antes de intentar de nuevo.");
+    if (error instanceof Error && "code" in error && error.code === 11000) {
+      const keys = "keyPattern" in error ? error.keyPattern as Record<string, unknown> : {};
+      if (keys?.name && keys.householdId && !("parentId" in keys)) {
+        throw new AccountError("Ya existe un producto con ese nombre en tu hogar. Usa el producto existente o restaura el archivado. Revisa también los nombres repetidos en la lista.");
+      }
+      throw new AccountError("Ya existe un registro con esos datos. Actualiza la página antes de intentar de nuevo.");
+    }
     throw error;
   }
 }
@@ -89,11 +95,19 @@ async function resolveProductCategory(context: MutationContext, categoryId: Type
   return category._id;
 }
 
+async function requireAvailableProductNames(context: MutationContext, names: string[], excludeId?: Types.ObjectId) {
+  const existing = await Product.findOne({ householdId: context.householdId, name: { $in: names }, ...(excludeId ? { _id: { $ne: excludeId } } : {}) }).collation(PRODUCT_NAME_COLLATION).session(context.session).lean();
+  if (existing) throw new AccountError(existing.archivedAt
+    ? `El producto «${existing.name}» ya está archivado en tu hogar. Restáuralo para volver a usarlo.`
+    : `El producto «${existing.name}» ya existe en tu hogar. Actualiza sus existencias o edita el producto existente.`);
+}
+
 export async function createProduct(actor: HouseholdActor, householdId: string, requestId: string, input: ProductInput) {
   const fields = { ...productFields(input), quantity: wholeNumber(input.quantity) };
   const draft = categoryDraft(input);
   return mutateInventory(actor, householdId, requestId, "product-create", { ...fields, ...(draft ? { draft } : {}) }, async (context) => {
     const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
+    await requireAvailableProductNames(context, [fields.name]);
     const [product] = await Product.create([{ householdId: context.householdId, ...fields, categoryId }], { session: context.session });
     return { id: product._id.toString(), movementId: await movement(context, product._id, requestId, 0, fields.quantity, "receipt") };
   });
@@ -117,14 +131,24 @@ export async function createProducts(actor: HouseholdActor, householdId: string,
   });
   return mutateInventory(actor, householdId, requestId, "products-create", { categoryId, products }, async (context) => {
     if (categoryId) await requireCategoryInHousehold(context.householdId, categoryId, context.session);
-    const created = await Product.insertMany(products.map((product) => ({ ...product, categoryId, householdId: context.householdId })), { session: context.session });
+    const existing = await Product.find({ householdId: context.householdId, name: { $in: products.map(product => product.name) } }).collation(PRODUCT_NAME_COLLATION).select("name").session(context.session).lean();
+    const collator = new Intl.Collator(PRODUCT_NAME_COLLATION.locale, { sensitivity: "accent" });
+    const seen = existing.map(product => product.name);
+    const accepted = products.filter(product => {
+      if (seen.some(name => collator.compare(name, product.name) === 0)) return false;
+      seen.push(product.name);
+      return true;
+    });
+    const counts = { addedCount: accepted.length, omittedCount: products.length - accepted.length };
+    if (!accepted.length) return { id: householdId, movementId: null, ...counts };
+    const created = await Product.insertMany(accepted.map((product) => ({ ...product, categoryId, householdId: context.householdId })), { session: context.session });
     let firstMovementId: string | null = null;
     for (const product of created) {
       const movementRequestId = createHash("sha256").update(JSON.stringify([requestId, product._id.toString()])).digest("hex");
       const movementId = await movement(context, product._id, movementRequestId, 0, product.quantity, "receipt");
       firstMovementId ??= movementId;
     }
-    return { id: created[0]._id.toString(), movementId: firstMovementId };
+    return { id: created[0]._id.toString(), movementId: firstMovementId, ...counts };
   });
 }
 
@@ -139,6 +163,7 @@ export async function editProduct(actor: HouseholdActor, householdId: string, re
   const fields = productFields(input);
   const draft = categoryDraft(input);
   return mutateInventory(actor, householdId, requestId, "product-edit", { id, revision, ...fields, ...(draft ? { draft } : {}) }, async (context) => {
+    await requireAvailableProductNames(context, [fields.name], id);
     const categoryId = await resolveProductCategory(context, fields.categoryId, draft);
     const updated = await Product.updateOne({ _id: id, householdId: context.householdId, archivedAt: null, ...revisionFilter(revision) }, { $set: { ...fields, categoryId }, $inc: { revision: 1 } }, { session: context.session, runValidators: true });
     if (!updated.modifiedCount) throw new AccountError("El producto cambió o ya no está disponible. Actualiza la página antes de editarlo.");

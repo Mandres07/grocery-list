@@ -85,12 +85,20 @@ async function checkIndexes(database = mongoose.connection.db!) {
 
 export async function runDatabaseCommand(command: string, args: string[], env = process.env) {
   const { uri, database } = maintenanceConfiguration(env);
-  if (!["inspect", "prepare", "retention", "backup", "restore-test"].includes(command)) throw new Error("Choose inspect, prepare, retention, backup, or restore-test.");
+  if (!["inspect", "prepare", "product-duplicates", "retention", "backup", "restore-test"].includes(command)) throw new Error("Choose inspect, prepare, product-duplicates, retention, backup, or restore-test.");
   try {
     await mongoose.connect(uri, { dbName: database, autoIndex: false, autoCreate: false, serverSelectionTimeoutMS: 10000, maxPoolSize: 2 });
     const db = mongoose.connection.db!;
     const hello = await db.command({ hello: 1 });
     if (!hello.setName && hello.msg !== "isdbgrid") throw new Error("This application requires a replica set or Atlas cluster for transactions.");
+    if (command === "product-duplicates") {
+      const duplicates = await db.collection("products").aggregate([
+        { $group: { _id: { householdId: "$householdId", name: "$name" }, count: { $sum: 1 }, products: { $push: { id: "$_id", name: "$name", archivedAt: "$archivedAt" } } } },
+        { $match: { count: { $gt: 1 } } },
+      ], { collation: { locale: "es", strength: 2 } }).toArray();
+      console.log(JSON.stringify(duplicates, null, 2));
+      return;
+    }
     if (command === "retention") {
       if (!args.includes("--writes-paused")) throw new Error("Deploy request-expiration protection and pause application writes before running retention --writes-paused.");
       await checkIndexes();

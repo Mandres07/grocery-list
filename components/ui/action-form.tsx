@@ -39,7 +39,8 @@ export function ActionForm({ action, requestId: initialRequestId, hiddenFields =
         onStatusChange?.("idle");
         onSuccess?.();
         // Open the confirmed server view, optionally moving to its completion page.
-        if (successHref) window.location.assign(successHref);
+        const destination = successHref ?? result.successHref;
+        if (destination) window.location.assign(destination);
         else window.location.reload();
       } else if (result.retryable) { setUncertain(true); onStatusChange?.("uncertain"); }
       else { pendingData.current = null; setUncertain(false); requestId.current = createInventoryRequestId(); onStatusChange?.("idle"); }

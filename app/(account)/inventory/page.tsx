@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { bulkProductMessage, parseBulkResult } from "@/lib/inventory/bulk-result";
 import { inventoryPage } from "@/lib/inventory/pagination";
 import { InventoryPagination } from "@/components/inventory/inventory-pagination";
 import { SelectControl } from "@/components/ui/select-control";
@@ -17,6 +19,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
   const category = typeof params.category === "string" ? params.category : "";
   const lowStock = params.stock === "low";
   const archived = params.archived === "yes";
+  const completion = parseBulkResult(params.added, params.omitted);
   const requestedPage = inventoryPage(params.page);
   const { products, categories, total, page, pageCount } = await listInventory(user, householdId, { query, ...(category ? { categoryId: category } : {}), lowStock, archived, page: requestedPage });
   const labels = new Map(categoryLabels(categories).map((item) => [item.id, item.label]));
@@ -28,6 +31,11 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
       </div>
     </ListFilters><ProductDialog householdId={householdId} categories={categories} /></div>}>
 
+    {completion && <div role="status" className={`notice mt-4${completion.omitted > 0 ? " notice-warning" : ""}`}>
+      <p>{bulkProductMessage(completion.added, completion.omitted)}</p>
+      {completion.omitted > 0 && <p className="mt-1 text-sm">Los productos omitidos ya existen en tu hogar, incluidos los archivados, o se repiten en la lista. Sus existencias no cambiaron.</p>}
+      <Link href="/inventory" className="action-link mt-2">Cerrar aviso</Link>
+    </div>}
     <ProductTable key={JSON.stringify([householdId, query, category, lowStock, archived, page])} householdId={householdId} products={products} categories={labels} total={total} lowStockOnly={lowStock} archived={archived} />
     <InventoryPagination page={page} pageCount={pageCount} total={total} filters={{ ...(query ? { q: query } : {}), ...(category ? { category } : {}), ...(lowStock ? { stock: "low" } : {}), ...(archived ? { archived: "yes" } : {}) }} />
     <RefreshInventory />
